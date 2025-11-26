@@ -1,15 +1,16 @@
 use godot::{
-    classes::{CharacterBody2D, ICharacterBody2D, ProjectSettings},
+    classes::{AnimatedSprite2D, CharacterBody2D, ICharacterBody2D},
     prelude::*,
 };
 
-use crate::player_movement::PlayerMovement;
+use crate::player_movement::{MovementConfig, MovementState, PlayerMovement};
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]
 pub struct Player {
     base: Base<CharacterBody2D>,
     movement: Option<PlayerMovement>,
+    sprite: Option<Gd<AnimatedSprite2D>>,
 }
 
 #[godot_api]
@@ -18,13 +19,32 @@ impl ICharacterBody2D for Player {
         Self {
             base,
             movement: None,
+            sprite: None,
         }
     }
 
     fn ready(&mut self) {
-        let settings = ProjectSettings::singleton();
-        let gravity = settings.get("physics/2d/default_gravity").to::<f64>() as f32;
-        self.movement = Some(PlayerMovement::new(gravity));
+        let config = MovementConfig {
+            walk_speed: 120.0,
+            accel_speed: 720.0,
+            jump_velocity: -300.0,
+            min_walk_speed: 0.1,
+            action_walk_left: "walk_left".to_string(),
+            action_walk_right: "walk_right".to_string(),
+            action_jump: "jump".to_string(),
+            ..Default::default()
+        };
+        self.movement = Some(PlayerMovement::new(config));
+
+        // Get the AnimatedSprite2D child node
+        self.sprite = self
+            .base()
+            .try_get_node_as::<AnimatedSprite2D>("AnimatedSprite2D");
+
+        if self.sprite.is_none() {
+            godot_error!("AnimatedSprite2D node not found as child of Player");
+        }
+
         godot_print!("Player ready")
     }
 
@@ -33,12 +53,66 @@ impl ICharacterBody2D for Player {
         let velocity = self.base().get_velocity();
         let is_on_floor = self.base().is_on_floor();
 
-        // Process movement
-        if let Some(movement) = &mut self.movement {
+        // Process movement and get new velocity and state
+        let (new_velocity, state) = if let Some(movement) = &mut self.movement {
             let new_velocity = movement.physics_process(velocity, is_on_floor, delta);
+            (new_velocity, movement.state)
+        } else {
+            return;
+        };
 
-            self.base_mut().set_velocity(new_velocity);
-            self.base_mut().move_and_slide();
+        // Update physics
+        self.base_mut().set_velocity(new_velocity);
+        self.base_mut().move_and_slide();
+
+        // Update sprite direction and animation
+        self.update_sprite_and_animation(new_velocity, state);
+    }
+}
+
+#[godot_api]
+impl Player {
+    /// Update sprite direction based on velocity and play appropriate animation
+    fn update_sprite_and_animation(&mut self, velocity: Vector2, state: MovementState) {
+        // Get the appropriate animation for current state before mutably borrowing sprite
+        let animation = self.get_animation_name(velocity, state);
+
+        if let Some(sprite) = &mut self.sprite {
+            // Flip sprite based on horizontal velocity
+            if !velocity.x.is_zero_approx() {
+                sprite.set_scale(Vector2::new(velocity.x.signum(), 1.0));
+            }
+
+            // Play animation if it's different from current one
+            if !animation.is_empty() && animation != sprite.get_animation() {
+                sprite.set_animation(&animation);
+                sprite.play();
+            }
         }
+    }
+
+    /// Determine which animation to play based on state and velocity
+    fn get_animation_name(&self, velocity: Vector2, state: MovementState) -> StringName {
+        let animation_str = match state {
+            MovementState::Floor => {
+                if let Some(movement) = &self.movement {
+                    if movement.is_walking(velocity) {
+                        "walk"
+                    } else {
+                        "idle"
+                    }
+                } else {
+                    "idle"
+                }
+            }
+            MovementState::Air => {
+                if velocity.y > 0.0 {
+                    "fall"
+                } else {
+                    "jump"
+                }
+            }
+        };
+        StringName::from(animation_str)
     }
 }
