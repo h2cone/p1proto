@@ -1,9 +1,16 @@
-[gd_scene load_steps=2 format=3 uid="uid://crh8dy0krhs03"]
+[gd_scene load_steps=3 format=3 uid="uid://crh8dy0krhs03"]
 
 [ext_resource type="SpriteFrames" uid="uid://bmu7lxa0en7uo" path="res://graphics/jelly_character.res" id="1_4flbx"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4flbx"]
+size = Vector2(16, 24)
+
 [node name="Player" type="Player"]
+collision_mask = 2
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = ExtResource("1_4flbx")
 animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_4flbx")
