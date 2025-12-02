@@ -1,15 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://bvfi37bgphi6x"]
-
-[ext_resource type="PackedScene" uid="uid://b7jiff4kxcm44" path="res://ldtk/levels/Room_0_0.scn" id="1_80nbo"]
-[ext_resource type="PackedScene" uid="uid://crh8dy0krhs03" path="res://player/player.tscn" id="2_e2o6t"]
+[gd_scene format=3 uid="uid://bvfi37bgphi6x"]
 
 [node name="Game" type="Game"]
 
 [node name="World" type="World" parent="."]
 
 [node name="Level" type="Level" parent="World"]
-
-[node name="Room_0_0" parent="World/Level" instance=ExtResource("1_80nbo")]
-
-[node name="Player" parent="World/Level" instance=ExtResource("2_e2o6t")]
-position = Vector2(64, 64)
