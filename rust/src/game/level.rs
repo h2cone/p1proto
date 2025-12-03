@@ -3,8 +3,7 @@ use godot::{
     prelude::*,
 };
 
-use crate::room_loader::RoomLoader;
-use crate::room_transition::BoundaryDetector;
+use crate::rooms::{BoundaryDetector, RoomLoader};
 
 /// Initial room grid coordinates (as specified in SPEC.md)
 const INITIAL_ROOM: (i32, i32) = (0, 1);
@@ -83,7 +82,6 @@ impl INode2D for Level {
     }
 
     fn physics_process(&mut self, _delta: f64) {
-        // Check for room transitions every physics frame (VVVVVV-style)
         self.check_room_transitions();
     }
 }
@@ -173,7 +171,6 @@ impl Level {
             parent.remove_child(&player);
         }
 
-        // Unload old room (VVVVVV-style: only load target room, don't keep old one)
         if let Some(mut old_room) = self.current_room_node.take() {
             self.base_mut().remove_child(&old_room);
             old_room.queue_free();

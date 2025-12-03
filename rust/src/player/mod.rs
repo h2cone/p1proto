@@ -1,9 +1,11 @@
+mod movement;
+
+pub use movement::{MovementConfig, MovementState, PlayerMovement};
+
 use godot::{
     classes::{AnimatedSprite2D, CharacterBody2D, ICharacterBody2D},
     prelude::*,
 };
-
-use crate::player_movement::{MovementConfig, MovementState, PlayerMovement};
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]

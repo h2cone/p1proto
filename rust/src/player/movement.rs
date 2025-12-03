@@ -115,14 +115,4 @@ impl PlayerMovement {
     pub fn is_walking(&self, velocity: Vector2) -> bool {
         velocity.abs().x > self.config.min_walk_speed
     }
-
-    /// Check if player is rising
-    pub fn is_rising(&self, velocity: Vector2) -> bool {
-        velocity.y < 0.0
-    }
-
-    /// Check if player is falling
-    pub fn is_falling(&self, velocity: Vector2) -> bool {
-        velocity.y > 0.0
-    }
 }

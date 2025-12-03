@@ -7,7 +7,6 @@ use std::collections::HashMap;
 /// Room loader that handles loading and caching room scenes
 ///
 /// Design considerations from spec:
-/// - Loads rooms on-demand like VVVVVV (not preloading neighbors like p1playground)
 /// - Calculates adjacent rooms from grid coordinates (not hardcoded connections)
 /// - Simple, focused responsibility: just loading rooms
 pub struct RoomLoader {
@@ -94,18 +93,6 @@ impl RoomLoader {
     pub fn room_exists(&mut self, room_coords: (i32, i32)) -> bool {
         self.load_room_scene(room_coords).is_some()
     }
-
-    /// Clear the scene cache
-    ///
-    /// Use this if you need to reload rooms from disk (e.g., after hot-reloading assets).
-    pub fn clear_cache(&mut self) {
-        self.scene_cache.clear();
-    }
-
-    /// Get the number of cached scenes
-    pub fn cache_size(&self) -> usize {
-        self.scene_cache.len()
-    }
 }
 
 #[cfg(test)]
@@ -117,11 +104,5 @@ mod tests {
         let loader = RoomLoader::new("res://rooms/Room_{x}_{y}.scn".to_string());
         // We can't actually test loading without Godot, but we can verify the pattern logic
         assert_eq!(loader.scene_path_pattern, "res://rooms/Room_{x}_{y}.scn");
-    }
-
-    #[test]
-    fn test_cache_size() {
-        let loader = RoomLoader::new("res://rooms/Room_{x}_{y}.scn".to_string());
-        assert_eq!(loader.cache_size(), 0);
     }
 }

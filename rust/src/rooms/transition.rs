@@ -8,34 +8,21 @@ pub const ROOM_HEIGHT: f32 = 240.0;
 pub const PLAYER_WIDTH: f32 = 16.0;
 pub const PLAYER_HEIGHT: f32 = 24.0;
 
-/// Direction a player is transitioning between rooms
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum TransitionDirection {
-    Left,
-    Right,
-    Up,
-    Down,
-}
-
 /// Result of boundary detection check
 #[derive(Clone, Debug)]
 pub struct TransitionCheck {
-    pub should_transition: bool,
-    pub direction: TransitionDirection,
     pub target_room: (i32, i32),
     pub new_position: Vector2,
 }
 
 /// Boundary detector for room transitions
 ///
-/// This implements the VVVVVV-style boundary detection approach:
 /// - Checks every frame in the game loop
 /// - Uses player direction (velocity) to prevent backtracking
 /// - Calculates target room coordinates based on current position
 /// - Doesn't use hysteresis/lag thresholds (uses velocity direction instead)
 pub struct BoundaryDetector {
     /// Threshold: how much of player body must cross before transition (0.0-1.0)
-    /// VVVVVV uses simple pixel thresholds, we use percentage for flexibility
     pub cross_threshold: f32,
 }
 
@@ -70,8 +57,6 @@ impl BoundaryDetector {
                 let target_room = (current_room.0 - 1, current_room.1);
                 let new_position = Vector2::new(player_pos.x + ROOM_WIDTH, player_pos.y);
                 return Some(TransitionCheck {
-                    should_transition: true,
-                    direction: TransitionDirection::Left,
                     target_room,
                     new_position,
                 });
@@ -84,8 +69,6 @@ impl BoundaryDetector {
                 let target_room = (current_room.0 + 1, current_room.1);
                 let new_position = Vector2::new(player_pos.x - ROOM_WIDTH, player_pos.y);
                 return Some(TransitionCheck {
-                    should_transition: true,
-                    direction: TransitionDirection::Right,
                     target_room,
                     new_position,
                 });
@@ -101,8 +84,6 @@ impl BoundaryDetector {
                 let target_room = (current_room.0, current_room.1 - 1);
                 let new_position = Vector2::new(player_pos.x, player_pos.y + ROOM_HEIGHT);
                 return Some(TransitionCheck {
-                    should_transition: true,
-                    direction: TransitionDirection::Up,
                     target_room,
                     new_position,
                 });
@@ -115,8 +96,6 @@ impl BoundaryDetector {
                 let target_room = (current_room.0, current_room.1 + 1);
                 let new_position = Vector2::new(player_pos.x, player_pos.y - ROOM_HEIGHT);
                 return Some(TransitionCheck {
-                    should_transition: true,
-                    direction: TransitionDirection::Down,
                     target_room,
                     new_position,
                 });
@@ -161,7 +140,6 @@ mod tests {
         );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.direction, TransitionDirection::Right);
         assert_eq!(check.target_room, (1, 1));
     }
 
@@ -187,7 +165,6 @@ mod tests {
         );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.direction, TransitionDirection::Left);
         assert_eq!(check.target_room, (0, 1));
     }
 
@@ -201,7 +178,6 @@ mod tests {
         );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.direction, TransitionDirection::Down);
         assert_eq!(check.target_room, (0, 2));
     }
 
@@ -215,7 +191,6 @@ mod tests {
         );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.direction, TransitionDirection::Up);
         assert_eq!(check.target_room, (0, 0));
     }
 }
