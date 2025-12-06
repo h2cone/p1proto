@@ -31,9 +31,9 @@ impl ICharacterBody2D for Player {
             accel_speed: 720.0,
             jump_velocity: -300.0,
             min_walk_speed: 0.1,
-            action_walk_left: "walk_left".to_string(),
-            action_walk_right: "walk_right".to_string(),
-            action_jump: "jump".to_string(),
+            action_walk_left: "act_walk_left".to_string(),
+            action_walk_right: "act_walk_right".to_string(),
+            action_jump: "act_jump".to_string(),
             ..Default::default()
         };
         self.movement = Some(PlayerMovement::new(config));

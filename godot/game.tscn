@@ -1,7 +1,11 @@
-[gd_scene format=3 uid="uid://bvfi37bgphi6x"]
+[gd_scene load_steps=2 format=3 uid="uid://bvfi37bgphi6x"]
+
+[ext_resource type="PackedScene" uid="uid://dv4c1nwhq5e3d" path="res://pause_menu.tscn" id="1_80nbo"]
 
 [node name="Game" type="Game"]
 
 [node name="World" type="World" parent="."]
 
 [node name="Level" type="Level" parent="World"]
+
+[node name="PauseMenu" parent="." instance=ExtResource("1_80nbo")]
