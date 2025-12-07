@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://dv4c1nwhq5e3d"]
+[gd_scene format=3 uid="uid://bn0g0fos7pnlj"]
 
 [node name="PauseMenu" type="PauseMenu"]
 anchors_preset = 15

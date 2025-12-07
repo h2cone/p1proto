@@ -15,7 +15,7 @@ const INITIAL_PLAYER_POS: Vector2 = Vector2::new(64.0, 64.0);
 const PLAYER_SCENE_PATH: &str = "res://player/player.tscn";
 
 /// Room scene path pattern (LDtk level files)
-const ROOM_SCENE_PATTERN: &str = "res://ldtk/levels/Room_{x}_{y}.scn";
+const ROOM_SCENE_PATTERN: &str = "res://pipeline/ldtk/levels/Room_{x}_{y}.scn";
 
 /// Transition threshold: 50% of player body must cross boundary
 const TRANSITION_THRESHOLD: f32 = 0.5;

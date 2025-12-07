@@ -20,7 +20,7 @@ impl RoomLoader {
     /// Create a new room loader
     ///
     /// # Arguments
-    /// * `scene_path_pattern` - Pattern for room scene paths, e.g., "res://ldtk/levels/Room_{x}_{y}.scn"
+    /// * `scene_path_pattern` - Pattern for room scene paths, e.g., "res://pipeline/ldtk/levels/Room_{x}_{y}.scn"
     ///                          Use {x} and {y} as placeholders for grid coordinates
     pub fn new(scene_path_pattern: String) -> Self {
         Self {

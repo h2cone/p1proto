@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://cdwx8lwv4nwjv"
+path="res://.godot/imported/jelly_character.aseprite-1f2224e2b2e13d3b3cc653a0aa824f5d.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/jelly_character.aseprite"
+dest_files=["res://.godot/imported/jelly_character.aseprite-1f2224e2b2e13d3b3cc653a0aa824f5d.res"]
+
+[params]
+

@@ -1,0 +1,8 @@
+~chord_seq: speed 0.48 >> seq 60_57_53_55
+~pad_root: ~chord_seq >> trisynth 0.08 1.6 >> mul 0.18 >> pan -0.12
+~pad_fifth: ~chord_seq >> mul 1.498 >> trisynth 0.08 1.3 >> mul 0.12 >> pan 0.12
+
+~bass_seq: speed 0.48 >> seq 48_48_45_45_43_43_41_41
+~bass: ~bass_seq >> squsynth 0.006 0.32 >> mul 0.20 >> pan -0.08
+
+out: mix ~bass ~pad_root ~pad_fifth >> plate 0.22 >> mul 0.80
