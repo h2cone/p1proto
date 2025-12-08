@@ -17,4 +17,4 @@ impl INode for Game {
     }
 }
 
-pub mod level;
+pub mod room_manager;

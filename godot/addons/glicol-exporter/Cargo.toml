@@ -1,0 +1,10 @@
+[package]
+name = "glicol-exporter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+glicol = { git = "https://github.com/chaosprint/glicol" }
+hound = "3.5"
+mp3lame-encoder = { version = "0.2", features = ["std"] }
+vorbis-encoder = "0.1"

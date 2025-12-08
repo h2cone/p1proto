@@ -6,8 +6,8 @@ const LDTK_LATEST_VERSION = "1.5.3"
 enum Presets {DEFAULT}
 
 const Util = preload("src/util/util.gd")
-const LDTKWorldScript = preload("src/world.gd")
-const LDTKLevelScript = preload("src/level.gd")
+const World = preload("src/world.gd")
+const Level = preload("src/level.gd")
 const Tileset = preload("src/tileset.gd")
 const DefinitionUtil = preload("src/util/definition_util.gd")
 
@@ -208,14 +208,14 @@ func _import(
 		for world_instance in world_instances:
 			var world_instance_name: String = world_instance.identifier
 			var world_instance_iid: String = world_instance.iid
-			var levels := LDTKLevelScript.build_levels(world_instance, definitions, base_dir, external_levels)
-			var world_node := LDTKWorldScript.create_world(world_instance_name, world_instance_iid, levels, base_dir)
+			var levels := Level.build_levels(world_instance, definitions, base_dir, external_levels)
+			var world_node := World.create_world(world_instance_name, world_instance_iid, levels, base_dir)
 			world_nodes.append(world_node)
 
-		world = LDTKWorldScript.create_multi_world(world_name, world_iid, world_nodes)
+		world = World.create_multi_world(world_name, world_iid, world_nodes)
 	else:
 		if Util.options.verbose_output: Util.print("block", "Levels")
-		var levels := LDTKLevelScript.build_levels(world_data, definitions, base_dir, external_levels)
+		var levels := Level.build_levels(world_data, definitions, base_dir, external_levels)
 
 		# Save Levels (after Level Post-Import)
 		if (Util.options.pack_levels):
@@ -231,10 +231,10 @@ func _import(
 			var packed_levels = save_levels(levels, levels_path, gen_files)
 
 			if (Util.options.verbose_output): Util.print("block", "Save World")
-			world = LDTKWorldScript.create_world(world_name, world_iid, packed_levels, base_dir)
+			world = World.create_world(world_name, world_iid, packed_levels, base_dir)
 		else:
 			if (Util.options.verbose_output): Util.print("block", "Save World")
-			world = LDTKWorldScript.create_world(world_name, world_iid, levels, base_dir)
+			world = World.create_world(world_name, world_iid, levels, base_dir)
 
 			Util.handle_references()
 

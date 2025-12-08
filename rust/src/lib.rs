@@ -1,10 +1,10 @@
 use godot::prelude::*;
 
+mod checkpoint;
 mod game;
 mod player;
 mod rooms;
 mod ui;
-mod world;
 
 struct MyExtension;
 

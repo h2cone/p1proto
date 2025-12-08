@@ -1,11 +1,15 @@
-[gd_scene load_steps=2 format=3 uid="uid://bvfi37bgphi6x"]
+[gd_scene load_steps=3 format=3 uid="uid://bvfi37bgphi6x"]
 
-[ext_resource type="PackedScene" uid="uid://dv4c1nwhq5e3d" path="res://pause_menu.tscn" id="1_80nbo"]
+[ext_resource type="PackedScene" uid="uid://bn0g0fos7pnlj" path="res://ui/pause_menu.tscn" id="1_80nbo"]
+[ext_resource type="AudioStream" uid="uid://cx3nkttghf2pf" path="res://pipeline/glicol/bgm.ogg" id="2_e2o6t"]
 
 [node name="Game" type="Game"]
 
-[node name="World" type="World" parent="."]
-
-[node name="Level" type="Level" parent="World"]
+[node name="RoomManager" type="RoomManager" parent="."]
 
 [node name="PauseMenu" parent="." instance=ExtResource("1_80nbo")]
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("2_e2o6t")
+autoplay = true
+parameters/looping = true

@@ -1,8 +1,20 @@
-~chord_seq: speed 0.48 >> seq 60_57_53_55
-~pad_root: ~chord_seq >> trisynth 0.08 1.6 >> mul 0.18 >> pan -0.12
-~pad_fifth: ~chord_seq >> mul 1.498 >> trisynth 0.08 1.3 >> mul 0.12 >> pan 0.12
+// Cute 4-bar loop for the current build; default bpm is 120 unless set elsewhere.
+~bd: seq 36___36___36___36___ >> bd 0.32 >> mul 0.28
+~sn: seq ____38_______38___ >> sn 0.22 >> mul 0.24
+~hh: seq _1_1_1_1_1_1_1_1 >> hh 0.08 >> pan 0.15 >> mul 0.10
 
-~bass_seq: speed 0.48 >> seq 48_48_45_45_43_43_41_41
-~bass: ~bass_seq >> squsynth 0.006 0.32 >> mul 0.20 >> pan -0.08
+~bass_c: seq 48___55___48___55___
+~bass_g: seq 43___50___43___50___
+~bass_a: seq 45___52___45___52___
+~bass_f: seq 41___48___41___48___
+~bass: arrange ~bass_c 1 ~bass_g 1 ~bass_a 1 ~bass_f 1 >> squsynth 0.01 0.22 >> lpf 320 0.9 >> mul 0.22
 
-out: mix ~bass ~pad_root ~pad_fifth >> plate 0.22 >> mul 0.80
+~lead_a: seq 72_76_79_76_74_72_76_79_
+~lead_b: seq 69_74_76_74_69_71_74_76_
+~lead: arrange ~lead_a 2 ~lead_b 2 >> trisynth 0.01 0.23 >> lpf 1400 0.7 >> pan -0.08 >> mul 0.24
+
+~sparkle: seq __84___86___88___91_ >> squsynth 0.005 0.18 >> lpf 2200 0.8 >> pan 0.25 >> mul 0.12
+
+~bus: mix ~bd ~sn ~hh ~bass ~lead ~sparkle >> mul 0.85
+~verb: ~bus >> plate 0.18 >> mul 0.35
+out: mix ~bus ~verb
