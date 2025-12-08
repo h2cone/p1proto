@@ -20,7 +20,7 @@
 			"worldIid": "b72eb650-ac70-11f0-a08c-374864a1e352",
 			"levelIid": "7f585130-ac70-11f0-8241-c7547a43993c",
 			"layerIid": "195d2141-d380-11f0-95bf-e733df6512c2",
-			"entityIid": "d1885060-d380-11f0-95bf-97bf574927ba"
+			"entityIid": "93319de0-d380-11f0-95bf-bba97d70b91a"
 		}, "worldX": 792, "worldY": 448, "widPx": 16, "heiPx": 24, "fields" : {} }]
 	}],
 	"worldLayout": "GridVania",
@@ -583,7 +583,7 @@
 							"__tags": [],
 							"__tile": null,
 							"__smartColor": "#63C74D",
-							"iid": "d1885060-d380-11f0-95bf-97bf574927ba",
+							"iid": "93319de0-d380-11f0-95bf-bba97d70b91a",
 							"width": 16,
 							"height": 24,
 							"defUid": 19,

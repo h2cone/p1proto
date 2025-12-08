@@ -1,4 +1,4 @@
-use godot::classes::{AnimatedSprite2D, Area2D, CharacterBody2D, IArea2D};
+use godot::classes::{AnimatedSprite2D, Area2D, IArea2D};
 use godot::prelude::*;
 
 #[derive(GodotClass)]
@@ -11,7 +11,7 @@ pub struct Checkpoint {
     activated: bool,
 
     /// AnimatedSprite2D node reference
-    sprite: Option<Gd<AnimatedSprite2D>>,
+    sprite: OnReady<Gd<AnimatedSprite2D>>,
 }
 
 #[godot_api]
@@ -20,25 +20,19 @@ impl IArea2D for Checkpoint {
         Self {
             base,
             activated: false,
-            sprite: None,
+            sprite: OnReady::from_node("AnimatedSprite2D"),
         }
     }
 
     fn ready(&mut self) {
-        // Get reference to AnimatedSprite2D child
-        if let Some(mut sprite) = self
-            .base()
-            .try_get_node_as::<AnimatedSprite2D>("AnimatedSprite2D")
-        {
-            self.sprite = Some(sprite.clone());
+        // Show the unchecked frame without autoplaying the animation
+        self.sprite.set_animation("unchecked");
+        self.sprite.stop();
 
-            // Start with unchecked animation
-            sprite.play_ex().name("unchecked").done();
-        }
-
-        // Connect body_entered signal
-        let callable = self.base().callable("on_body_entered");
-        self.base_mut().connect("body_entered", &callable);
+        // Connect body_entered signal without string literals
+        self.signals()
+            .body_entered()
+            .connect_self(Self::on_body_entered);
     }
 }
 
@@ -46,21 +40,12 @@ impl IArea2D for Checkpoint {
 impl Checkpoint {
     /// Called when a body enters the checkpoint area
     #[func]
-    fn on_body_entered(&mut self, body: Gd<Node2D>) {
+    fn on_body_entered(&mut self, _body: Gd<Node2D>) {
         // Only activate once
         if self.activated {
             return;
         }
-
-        // Check if the body is the player (layer 1 = "player")
-        if let Ok(body) = body.try_cast::<CharacterBody2D>() {
-            let collision_layer = body.get_collision_layer();
-
-            // Check if player layer (bit 0) is set
-            if collision_layer & 1 != 0 {
-                self.activate();
-            }
-        }
+        self.activate();
     }
 
     /// Activate the checkpoint
@@ -73,10 +58,9 @@ impl Checkpoint {
         self.activated = true;
         godot_print!("Checkpoint activated!");
 
-        // Play raising animation
-        if let Some(sprite) = self.sprite.as_mut() {
-            sprite.play_ex().name("raising").done();
-        }
+        // Immediately switch to checked loop
+        self.sprite.set_animation("checked");
+        self.sprite.play();
 
         // TODO: Save game state to checkpoint
         // This could involve:
@@ -95,9 +79,7 @@ impl Checkpoint {
     #[func]
     fn reset(&mut self) {
         self.activated = false;
-
-        if let Some(sprite) = self.sprite.as_mut() {
-            sprite.play_ex().name("unchecked").done();
-        }
+        self.sprite.set_animation("unchecked");
+        self.sprite.stop();
     }
 }

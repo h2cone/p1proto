@@ -1,5 +1,5 @@
 use godot::{
-    classes::{Control, IControl},
+    classes::{Button, Control, IControl},
     prelude::*,
 };
 
@@ -8,12 +8,18 @@ use godot::{
 #[class(base=Control)]
 pub struct PauseMenu {
     base: Base<Control>,
+    resume_button: OnReady<Gd<Button>>,
+    quit_button: OnReady<Gd<Button>>,
 }
 
 #[godot_api]
 impl IControl for PauseMenu {
     fn init(base: Base<Control>) -> Self {
-        Self { base }
+        Self {
+            base,
+            resume_button: OnReady::from_node("VBoxContainer/ResumeButton"),
+            quit_button: OnReady::from_node("VBoxContainer/QuitButton"),
+        }
     }
 
     fn ready(&mut self) {
@@ -44,27 +50,17 @@ impl IControl for PauseMenu {
 impl PauseMenu {
     /// Connect signals from UI buttons to handler methods
     fn connect_button_signals(&mut self) {
-        // Connect resume button
-        if let Some(mut resume_button) = self
-            .base()
-            .try_get_node_as::<godot::classes::Button>("VBoxContainer/ResumeButton")
-        {
-            let callable = self.base().callable("on_resume_button_pressed");
-            resume_button.connect("pressed", &callable);
-        } else {
-            godot_error!("ResumeButton not found in PauseMenu scene");
-        }
+        let pause_menu = self.to_gd();
 
-        // Connect quit button
-        if let Some(mut quit_button) = self
-            .base()
-            .try_get_node_as::<godot::classes::Button>("VBoxContainer/QuitButton")
-        {
-            let callable = self.base().callable("on_quit_button_pressed");
-            quit_button.connect("pressed", &callable);
-        } else {
-            godot_error!("QuitButton not found in PauseMenu scene");
-        }
+        self.resume_button
+            .signals()
+            .pressed()
+            .connect_other(&pause_menu, Self::on_resume_button_pressed);
+
+        self.quit_button
+            .signals()
+            .pressed()
+            .connect_other(&pause_menu, Self::on_quit_button_pressed);
     }
 
     /// Toggle pause state - show/hide menu and pause/unpause game

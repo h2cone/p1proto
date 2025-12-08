@@ -12,7 +12,7 @@ use godot::{
 pub struct Player {
     base: Base<CharacterBody2D>,
     movement: Option<PlayerMovement>,
-    sprite: Option<Gd<AnimatedSprite2D>>,
+    sprite: OnReady<Gd<AnimatedSprite2D>>,
 }
 
 #[godot_api]
@@ -21,7 +21,7 @@ impl ICharacterBody2D for Player {
         Self {
             base,
             movement: None,
-            sprite: None,
+            sprite: OnReady::from_node("AnimatedSprite2D"),
         }
     }
 
@@ -37,15 +37,6 @@ impl ICharacterBody2D for Player {
             ..Default::default()
         };
         self.movement = Some(PlayerMovement::new(config));
-
-        // Get the AnimatedSprite2D child node
-        self.sprite = self
-            .base()
-            .try_get_node_as::<AnimatedSprite2D>("AnimatedSprite2D");
-
-        if self.sprite.is_none() {
-            godot_error!("AnimatedSprite2D node not found as child of Player");
-        }
 
         godot_print!("Player ready")
     }
@@ -79,17 +70,16 @@ impl Player {
         // Get the appropriate animation for current state before mutably borrowing sprite
         let animation = self.get_animation_name(velocity, state);
 
-        if let Some(sprite) = &mut self.sprite {
-            // Flip sprite based on horizontal velocity
-            if !velocity.x.is_zero_approx() {
-                sprite.set_scale(Vector2::new(velocity.x.signum(), 1.0));
-            }
+        // Flip sprite based on horizontal velocity
+        if !velocity.x.is_zero_approx() {
+            self.sprite
+                .set_scale(Vector2::new(velocity.x.signum(), 1.0));
+        }
 
-            // Play animation if it's different from current one
-            if !animation.is_empty() && animation != sprite.get_animation() {
-                sprite.set_animation(&animation);
-                sprite.play();
-            }
+        // Play animation if it's different from current one
+        if !animation.is_empty() && animation != self.sprite.get_animation() {
+            self.sprite.set_animation(&animation);
+            self.sprite.play();
         }
     }
 

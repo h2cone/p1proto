@@ -1,6 +1,6 @@
 @tool
 
-const CHECKPOINT_SCENE_PATH := "res://checkpoint.tscn"
+const CHECKPOINT_SCENE_PATH := "res://checkpoint/checkpoint.tscn"
 const CHECKPOINT_SPRITE_PATH := "res://pipeline/aseprite/checkpoint_flag.res"
 
 # Entity Post-Import Script for LDtk Importer
