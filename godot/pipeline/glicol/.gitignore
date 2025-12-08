@@ -22,3 +22,5 @@ target
 
 # Output files
 *.wav
+*.ogg
+*.mp3
