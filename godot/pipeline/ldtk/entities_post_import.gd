@@ -43,6 +43,12 @@ func setup_checkpoint(entity_layer: LDTKEntityLayer, entity_data: Variant, seque
 	var checkpoint_instance = checkpoint_scene.instantiate()
 	checkpoint_instance.name = "Checkpoint"
 
+	var room_coords: Variant = get_room_coords(entity_layer)
+	if room_coords != null:
+		checkpoint_instance.set("room_coords", room_coords)
+	else:
+		printerr("Checkpoint room coords could not be resolved for layer: ", entity_layer.name)
+
 	# Add as child of the entity anchor
 	anchor.add_child(checkpoint_instance)
 	set_owner_if_present(checkpoint_instance, owner)
@@ -106,6 +112,31 @@ func get_entity_position(entity_data: Variant) -> Vector2:
 	if entity_data is LDTKEntity:
 		return Vector2(entity_data.position)
 	return Vector2.ZERO
+
+
+func get_room_coords(entity_layer: LDTKEntityLayer) -> Variant:
+	var level := entity_layer.get_parent()
+	if level:
+		var level_name: String = String(level.name)
+		var coords: Variant = parse_room_name(level_name)
+		if coords != null:
+			return coords
+	return null
+
+
+func parse_room_name(name: String) -> Variant:
+	var prefix := "Room_"
+	if not name.begins_with(prefix):
+		return null
+
+	var parts := name.substr(prefix.length()).split("_")
+	if parts.size() != 2:
+		return null
+
+	if not parts[0].is_valid_int() or not parts[1].is_valid_int():
+		return null
+
+	return Vector2i(int(parts[0]), int(parts[1]))
 
 
 func resolve_owner(node: Node) -> Node:

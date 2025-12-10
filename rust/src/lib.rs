@@ -4,6 +4,7 @@ mod checkpoint;
 mod game;
 mod player;
 mod rooms;
+mod save;
 mod ui;
 
 struct MyExtension;

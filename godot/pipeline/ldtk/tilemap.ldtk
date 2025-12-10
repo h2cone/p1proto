@@ -16,12 +16,20 @@
 	"toc": [{
 		"identifier": "Checkpoint_flag",
 		"instances": [],
-		"instancesData": [{ "iids": {
-			"worldIid": "b72eb650-ac70-11f0-a08c-374864a1e352",
-			"levelIid": "7f585130-ac70-11f0-8241-c7547a43993c",
-			"layerIid": "195d2141-d380-11f0-95bf-e733df6512c2",
-			"entityIid": "93319de0-d380-11f0-95bf-bba97d70b91a"
-		}, "worldX": 792, "worldY": 448, "widPx": 16, "heiPx": 24, "fields" : {} }]
+		"instancesData": [
+			{ "iids": {
+				"worldIid": "b72eb650-ac70-11f0-a08c-374864a1e352",
+				"levelIid": "7f585130-ac70-11f0-8241-c7547a43993c",
+				"layerIid": "195d2141-d380-11f0-95bf-e733df6512c2",
+				"entityIid": "878d76a0-d380-11f0-95bf-9d6cdc4350e6"
+			}, "worldX": 792, "worldY": 448, "widPx": 16, "heiPx": 24, "fields" : {} },
+			{ "iids": {
+				"worldIid": "b72eb650-ac70-11f0-a08c-374864a1e352",
+				"levelIid": "60a52530-ac70-11f0-bb38-f3578f607dba",
+				"layerIid": "195d2143-d380-11f0-95bf-15ee1791f322",
+				"entityIid": "da093a30-d380-11f0-95bf-0908dee28e18"
+			}, "worldX": 328, "worldY": 208, "widPx": 16, "heiPx": 24, "fields" : {} }
+		]
 	}],
 	"worldLayout": "GridVania",
 	"worldGridWidth": 320,
@@ -583,7 +591,7 @@
 							"__tags": [],
 							"__tile": null,
 							"__smartColor": "#63C74D",
-							"iid": "93319de0-d380-11f0-95bf-bba97d70b91a",
+							"iid": "878d76a0-d380-11f0-95bf-9d6cdc4350e6",
 							"width": 16,
 							"height": 24,
 							"defUid": 19,
@@ -934,7 +942,24 @@
 					"seed": 418712,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "Checkpoint_flag",
+							"__grid": [1,26],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#63C74D",
+							"iid": "da093a30-d380-11f0-95bf-0908dee28e18",
+							"width": 16,
+							"height": 24,
+							"defUid": 19,
+							"px": [8,208],
+							"fieldInstances": [],
+							"__worldX": 328,
+							"__worldY": 208
+						}
+					]
 				},
 				{
 					"__identifier": "Tiles",
