@@ -3,9 +3,13 @@ mod movement;
 pub use movement::{MovementConfig, MovementState, PlayerMovement};
 
 use godot::{
-    classes::{AnimatedSprite2D, CharacterBody2D, ICharacterBody2D},
+    classes::{AnimatedSprite2D, CharacterBody2D, CollisionObject2D, ICharacterBody2D, Input},
     prelude::*,
 };
+
+const MOVING_PLATFORM_LAYER: i32 = 3;
+const DROP_THROUGH_ACTION: &str = "act_down";
+const DROP_THROUGH_DURATION: f64 = 0.35;
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]
@@ -13,6 +17,8 @@ pub struct Player {
     base: Base<CharacterBody2D>,
     movement: Option<PlayerMovement>,
     sprite: OnReady<Gd<AnimatedSprite2D>>,
+    drop_through_timer: f64,
+    moving_platform_mask_default: bool,
 }
 
 #[godot_api]
@@ -22,6 +28,8 @@ impl ICharacterBody2D for Player {
             base,
             movement: None,
             sprite: OnReady::from_node("AnimatedSprite2D"),
+            drop_through_timer: 0.0,
+            moving_platform_mask_default: true,
         }
     }
 
@@ -38,13 +46,21 @@ impl ICharacterBody2D for Player {
         };
         self.movement = Some(PlayerMovement::new(config));
 
+        self.moving_platform_mask_default =
+            self.base().get_collision_mask_value(MOVING_PLATFORM_LAYER);
+
         godot_print!("Player ready")
     }
 
     fn physics_process(&mut self, delta: f64) {
         // Get immutable values first
         let velocity = self.base().get_velocity();
-        let is_on_floor = self.base().is_on_floor();
+        let mut is_on_floor = self.base().is_on_floor();
+
+        self.update_drop_through(is_on_floor, delta);
+        if self.drop_through_timer > 0.0 {
+            is_on_floor = false;
+        }
 
         // Process movement and get new velocity and state
         let (new_velocity, state) = if let Some(movement) = &mut self.movement {
@@ -65,6 +81,57 @@ impl ICharacterBody2D for Player {
 
 #[godot_api]
 impl Player {
+    fn update_drop_through(&mut self, is_on_floor: bool, delta: f64) {
+        if is_on_floor && self.drop_through_timer <= 0.0 && self.is_standing_on_moving_platform() {
+            let input = Input::singleton();
+            if input.is_action_just_pressed(DROP_THROUGH_ACTION) {
+                self.start_drop_through();
+            }
+        }
+
+        if self.drop_through_timer > 0.0 {
+            self.drop_through_timer -= delta;
+            if self.drop_through_timer <= 0.0 {
+                self.stop_drop_through();
+            }
+        }
+    }
+
+    fn start_drop_through(&mut self) {
+        self.drop_through_timer = DROP_THROUGH_DURATION;
+        self.base_mut()
+            .set_collision_mask_value(MOVING_PLATFORM_LAYER, false);
+    }
+
+    fn stop_drop_through(&mut self) {
+        self.drop_through_timer = 0.0;
+        let mask_default = self.moving_platform_mask_default;
+        self.base_mut()
+            .set_collision_mask_value(MOVING_PLATFORM_LAYER, mask_default);
+    }
+
+    fn is_standing_on_moving_platform(&mut self) -> bool {
+        let Some(collision) = self.base_mut().get_last_slide_collision() else {
+            return false;
+        };
+
+        let normal = collision.get_normal();
+        let is_floor_hit = normal.dot(Vector2::new(0.0, -1.0)) > 0.7;
+        if !is_floor_hit {
+            return false;
+        }
+
+        let Some(collider) = collision.get_collider() else {
+            return false;
+        };
+
+        if let Ok(body) = collider.try_cast::<CollisionObject2D>() {
+            body.get_collision_layer_value(MOVING_PLATFORM_LAYER)
+        } else {
+            false
+        }
+    }
+
     /// Update sprite direction based on velocity and play appropriate animation
     fn update_sprite_and_animation(&mut self, velocity: Vector2, state: MovementState) {
         // Get the appropriate animation for current state before mutably borrowing sprite

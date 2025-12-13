@@ -2,6 +2,7 @@ use godot::prelude::*;
 
 mod checkpoint;
 mod game;
+mod platforms;
 mod player;
 mod rooms;
 mod save;
