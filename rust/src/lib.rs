@@ -1,8 +1,7 @@
 use godot::prelude::*;
 
-mod checkpoint;
+mod entity;
 mod game;
-mod platforms;
 mod player;
 mod rooms;
 mod save;

@@ -1,8 +1,7 @@
 @tool
 
-const CHECKPOINT_SCENE_PATH := "res://checkpoint/checkpoint.tscn"
-const CHECKPOINT_SPRITE_PATH := "res://pipeline/aseprite/checkpoint_flag.res"
-const MOVING_PLATFORM_SCENE_PATH := "res://platforms/moving_platform.tscn"
+const CHECKPOINT_SCENE_PATH := "res://entity/checkpoint.tscn"
+const MOVING_PLATFORM_SCENE_PATH := "res://entity/moving_platform.tscn"
 
 # Entity Post-Import Script for LDtk Importer
 # Automatically sets up entities during import based on their identifier
@@ -18,7 +17,7 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 	for entity in entities:
 		var entity_identifier := get_entity_identifier(entity)
 		match entity_identifier:
-			"CheckpointFlag":
+			"Checkpoint":
 				checkpoint_count += 1
 				setup_checkpoint(entity_layer, entity, checkpoint_count)
 			"MovingPlatform":
@@ -31,36 +30,40 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 
 
 func setup_checkpoint(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
-	"""Set up a CheckpointFlag entity with all required components"""
+	"""Set up a Checkpoint entity with all required components"""
 
 	print("Setting up Checkpoint: ", get_entity_identifier(entity_data))
 
 	var owner := resolve_owner(entity_layer)
-	var anchor := ensure_entity_anchor(entity_layer, entity_data, sequence, owner)
-	anchor.set_meta("entity_type", "checkpoint")
 
 	# Load checkpoint scene
 	var checkpoint_scene = load(CHECKPOINT_SCENE_PATH)
 	if not checkpoint_scene:
-		printerr("Failed to load checkpoint.tscn - using manual setup")
-		setup_checkpoint_manual(anchor, owner)
+		printerr("Failed to load checkpoint.tscn at: ", CHECKPOINT_SCENE_PATH)
 		return
 
 	# Instance the checkpoint scene
-	var checkpoint_instance = checkpoint_scene.instantiate()
-	checkpoint_instance.name = "Checkpoint"
+	var checkpoint = checkpoint_scene.instantiate()
+	checkpoint.position = get_entity_position(entity_data)
+	checkpoint.name = build_entity_name(entity_data, sequence)
 
+	# Set room coordinates
 	var room_coords: Variant = get_room_coords(entity_layer)
 	if room_coords != null:
-		checkpoint_instance.set("room_coords", room_coords)
+		checkpoint.set("room_coords", room_coords)
 	else:
 		printerr("Checkpoint room coords could not be resolved for layer: ", entity_layer.name)
 
-	# Add as child of the entity anchor
-	anchor.add_child(checkpoint_instance)
-	set_owner_if_present(checkpoint_instance, owner)
+	# Add metadata
+	checkpoint.set_meta("ldtk_iid", get_entity_iid(entity_data))
+	checkpoint.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
+	checkpoint.set_meta("entity_type", "checkpoint")
 
-	print("  - Instantiated checkpoint.tscn as child")
+	# Add to scene tree
+	entity_layer.add_child(checkpoint)
+	set_owner_if_present(checkpoint, owner)
+
+	print("  - Instantiated checkpoint.tscn")
 
 
 func ensure_entity_anchor(
@@ -158,49 +161,6 @@ func resolve_owner(node: Node) -> Node:
 func set_owner_if_present(node: Node, owner: Node) -> void:
 	if owner:
 		node.owner = owner
-
-
-func setup_checkpoint_manual(parent: Node, owner: Node) -> void:
-	"""Manually create checkpoint structure if checkpoint.tscn doesn't exist"""
-
-	# 1. Add AnimatedSprite2D with checkpoint_flag.res
-	var sprite := AnimatedSprite2D.new()
-	sprite.name = "AnimatedSprite2D"
-
-	# Load the SpriteFrames resource
-	var sprite_frames = load(CHECKPOINT_SPRITE_PATH) as SpriteFrames
-	if sprite_frames:
-		sprite.sprite_frames = sprite_frames
-		sprite.animation = "unchecked"
-		sprite.autoplay = "" # Don't autoplay, let the script control it
-	else:
-		printerr("Failed to load checkpoint_flag.res")
-
-	# Center the sprite on the entity (entity size is 16x24)
-	sprite.offset = Vector2(8, 12)
-
-	parent.add_child(sprite)
-	set_owner_if_present(sprite, owner)
-
-	# 2. Add CollisionShape2D for player detection
-	var collision := CollisionShape2D.new()
-	collision.name = "CollisionShape2D"
-
-	# Create a rectangle shape matching the entity size
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(16, 24)
-	collision.shape = shape
-
-	# Center the collision shape
-	collision.position = Vector2(8, 12)
-
-	parent.add_child(collision)
-	set_owner_if_present(collision, owner)
-
-	print("  - Added AnimatedSprite2D with checkpoint_flag.res")
-	print("  - Added CollisionShape2D (16x24)")
-	print("  - Note: checkpoint.tscn not found, using manual setup")
-	print("  - Attach Checkpoint script at runtime or create checkpoint.tscn")
 
 
 func setup_moving_platform(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:

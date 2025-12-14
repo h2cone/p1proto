@@ -1,9 +1,9 @@
--- Aseprite Script: Checkpoint Flag Generator
--- Creates a 16x24 checkpoint flag animation
+-- Aseprite Script: Checkpoint Generator
+-- Creates a 16x24 checkpoint animation
 
 -- Create new sprite
 local sprite = Sprite(16, 24, ColorMode.RGB)
-sprite.filename = "checkpoint_flag.aseprite"
+sprite.filename = "checkpoint.aseprite"
 
 -- Define colors
 local white = Color { r = 255, g = 255, b = 255, a = 255 }
@@ -161,4 +161,4 @@ end
 
 createTag("checked", checkedStart, frameIndex - 1)
 
-app.alert("Checkpoint Flag Sprite Created!")
+app.alert("Checkpoint Sprite Created!")

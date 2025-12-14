@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cibvc43mkce33"
-path="res://.godot/imported/checkpoint_flag.png-264be2d2e1195a78f7e0f5ea19329f6b.ctex"
+uid="uid://cecgyo1tg1uq7"
+path="res://.godot/imported/plate.png-5b99b33628f2523bf4288682bd691900.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://pipeline/aseprite/checkpoint_flag.png"
-dest_files=["res://.godot/imported/checkpoint_flag.png-264be2d2e1195a78f7e0f5ea19329f6b.ctex"]
+source_file="res://pipeline/aseprite/plate.png"
+dest_files=["res://.godot/imported/plate.png-5b99b33628f2523bf4288682bd691900.ctex"]
 
 [params]
 
