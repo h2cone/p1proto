@@ -32,8 +32,8 @@ impl IAnimatableBody2D for MovingPlatform {
     fn init(base: Base<AnimatableBody2D>) -> Self {
         Self {
             base,
-            travel: Vector2::new(96.0, 0.0),
-            duration: 1.5,
+            travel: Vector2::new(0.0, 0.0),
+            duration: 0.0,
             pause_time: 0.0,
             start_position: Vector2::ZERO,
             tween: None,

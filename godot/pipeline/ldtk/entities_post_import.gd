@@ -44,7 +44,7 @@ func setup_checkpoint(entity_layer: LDTKEntityLayer, entity_data: Variant, seque
 
 	# Instance the checkpoint scene
 	var checkpoint = checkpoint_scene.instantiate()
-	checkpoint.position = get_entity_position(entity_data)
+	checkpoint.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
 	checkpoint.name = build_entity_name(entity_data, sequence)
 
 	# Set room coordinates
@@ -64,28 +64,6 @@ func setup_checkpoint(entity_layer: LDTKEntityLayer, entity_data: Variant, seque
 	set_owner_if_present(checkpoint, owner)
 
 	print("  - Instantiated checkpoint.tscn")
-
-
-func ensure_entity_anchor(
-		entity_layer: LDTKEntityLayer,
-		entity_data: Variant,
-		sequence: int,
-		owner: Node,
-) -> Node2D:
-	# Importer stores entities as Dictionaries by default; if a placeholder already exists, reuse it.
-	if entity_data is LDTKEntity:
-		set_owner_if_present(entity_data, owner)
-		return entity_data
-
-	var anchor := Node2D.new()
-	anchor.position = get_entity_position(entity_data)
-	anchor.name = build_entity_name(entity_data, sequence)
-	anchor.set_meta("ldtk_iid", get_entity_iid(entity_data))
-	anchor.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
-
-	entity_layer.add_child(anchor)
-	set_owner_if_present(anchor, owner)
-	return anchor
 
 
 func get_entity_identifier(entity_data: Variant) -> String:
@@ -122,6 +100,26 @@ func get_entity_position(entity_data: Variant) -> Vector2:
 	if entity_data is LDTKEntity:
 		return Vector2(entity_data.position)
 	return Vector2.ZERO
+
+
+func get_entity_size(entity_data: Variant) -> Vector2:
+	if entity_data is Dictionary and entity_data.has("size"):
+		var size = entity_data["size"]
+		if size is Vector2 or size is Vector2i:
+			return Vector2(size.x, size.y)
+	if entity_data is LDTKEntity:
+		return Vector2(entity_data.size)
+	return Vector2.ZERO
+
+
+func get_entity_anchor_position(entity_data: Variant, anchor: Vector2) -> Vector2:
+	# Imported LDtk entities use a top-left position and provide a size. This helper converts that
+	# rectangle into a desired anchor point (e.g. center = (0.5, 0.5)).
+	var pos := get_entity_position(entity_data)
+	var size := get_entity_size(entity_data)
+	if size == Vector2.ZERO:
+		return pos
+	return pos + (size * anchor)
 
 
 func get_room_coords(entity_layer: LDTKEntityLayer) -> Variant:
@@ -179,26 +177,12 @@ func setup_moving_platform(entity_layer: LDTKEntityLayer, entity_data: Variant, 
 	# Try to load the prefab scene
 	var platform_scene = load(MOVING_PLATFORM_SCENE_PATH)
 	if not platform_scene:
-		printerr("Failed to load moving_platform.tscn - using manual setup")
-		var platform_width: int = int(get_entity_field(entity_data, "platform_width", 32))
-		var platform_height: int = int(get_entity_field(entity_data, "platform_height", 8))
-		setup_moving_platform_manual(
-			entity_layer,
-			entity_data,
-			sequence,
-			owner,
-			travel_x,
-			travel_y,
-			duration,
-			pause_time,
-			platform_width,
-			platform_height,
-		)
+		printerr("Failed to load moving_platform.tscn at: ", MOVING_PLATFORM_SCENE_PATH)
 		return
 
 	# Instance the platform scene
 	var platform = platform_scene.instantiate()
-	platform.position = get_entity_position(entity_data)
+	platform.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
 	platform.name = build_entity_name(entity_data, sequence)
 
 	# Set MovingPlatform properties
@@ -219,67 +203,6 @@ func setup_moving_platform(entity_layer: LDTKEntityLayer, entity_data: Variant, 
 	print("  - Configured: travel=(%.1f, %.1f), duration=%.1fs, pause=%.1fs" % [travel_x, travel_y, duration, pause_time])
 
 
-func setup_moving_platform_manual(
-		entity_layer: LDTKEntityLayer,
-		entity_data: Variant,
-		sequence: int,
-		owner: Node,
-		travel_x: float,
-		travel_y: float,
-		duration: float,
-		pause_time: float,
-		platform_width: int,
-		platform_height: int,
-) -> void:
-	"""Manually create MovingPlatform structure if moving_platform.tscn doesn't exist"""
-
-	# Create the MovingPlatform node (Rust GDExtension class)
-	var platform = ClassDB.instantiate("MovingPlatform")
-	if not platform:
-		printerr("Failed to instantiate MovingPlatform - is the Rust extension loaded?")
-		return
-
-	# Set position
-	platform.position = get_entity_position(entity_data)
-	platform.name = build_entity_name(entity_data, sequence)
-
-	# Set MovingPlatform properties
-	platform.set("travel", Vector2(travel_x, travel_y))
-	platform.set("duration", duration)
-	platform.set("pause_time", pause_time)
-
-	# Add metadata
-	platform.set_meta("ldtk_iid", get_entity_iid(entity_data))
-	platform.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
-	platform.set_meta("entity_type", "moving_platform")
-
-	# Add to scene tree
-	entity_layer.add_child(platform)
-	set_owner_if_present(platform, owner)
-
-	# Add visual representation (Sprite2D)
-	var sprite := Sprite2D.new()
-	sprite.name = "Sprite2D"
-	sprite.texture = create_platform_texture(platform_width, platform_height)
-	sprite.centered = false
-	sprite.offset = Vector2(-platform_width / 2.0, -platform_height / 2.0)
-	platform.add_child(sprite)
-	set_owner_if_present(sprite, owner)
-
-	# Add collision shape
-	var collision := CollisionShape2D.new()
-	collision.name = "CollisionShape2D"
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(platform_width, platform_height)
-	collision.shape = shape
-	platform.add_child(collision)
-	set_owner_if_present(collision, owner)
-
-	print("  - Created MovingPlatform manually: travel=(%.1f, %.1f), duration=%.1fs, pause=%.1fs" % [travel_x, travel_y, duration, pause_time])
-	print("  - Added Sprite2D (%dx%d) and CollisionShape2D" % [platform_width, platform_height])
-	print("  - Note: moving_platform.tscn not found, using manual setup")
-
-
 func get_entity_field(entity_data: Variant, field_name: String, default_value: Variant) -> Variant:
 	"""Get a field value from entity data, with fallback to default"""
 	if entity_data is Dictionary and entity_data.has("fields"):
@@ -290,19 +213,3 @@ func get_entity_field(entity_data: Variant, field_name: String, default_value: V
 		if entity_data.fields.has(field_name):
 			return entity_data.fields[field_name]
 	return default_value
-
-
-func create_platform_texture(width: int, height: int) -> ImageTexture:
-	"""Create a simple colored texture for the platform"""
-	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0.8, 0.6, 0.4, 1.0)) # Brown/tan color
-
-	# Add border for visibility
-	for x in width:
-		image.set_pixel(x, 0, Color.BLACK)
-		image.set_pixel(x, height - 1, Color.BLACK)
-	for y in height:
-		image.set_pixel(0, y, Color.BLACK)
-		image.set_pixel(width - 1, y, Color.BLACK)
-
-	return ImageTexture.create_from_image(image)

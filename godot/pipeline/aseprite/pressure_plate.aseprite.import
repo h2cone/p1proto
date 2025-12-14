@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://bp4v1kr830vd"
+path="res://.godot/imported/pressure_plate.aseprite-784e585a36a60b0c36d592558b04b43c.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/pressure_plate.aseprite"
+dest_files=["res://.godot/imported/pressure_plate.aseprite-784e585a36a60b0c36d592558b04b43c.res"]
+
+[params]
+

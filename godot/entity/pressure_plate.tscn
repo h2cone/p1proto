@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://vucb2lx1yvyq"]
+
+[ext_resource type="SpriteFrames" uid="uid://ry6cgfmy25t5" path="res://pipeline/aseprite/pressure_plate.res" id="1_okruh"]
+
+[node name="PressurePlate" type="PressurePlate"]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_okruh")
+animation = &"active"

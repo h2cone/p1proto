@@ -591,7 +591,7 @@
 							"__tags": [],
 							"__tile": null,
 							"__smartColor": "#FFFFFF",
-							"iid": "b261d370-d380-11f0-bd76-bde5475a7ab8",
+							"iid": "61de4dd0-d380-11f0-8bec-1d085f4e2fcc",
 							"width": 32,
 							"height": 2,
 							"defUid": 21,
@@ -599,8 +599,8 @@
 							"fieldInstances": [
 								{ "__identifier": "travel_x", "__type": "Float", "__value": 0, "__tile": null, "defUid": 23, "realEditorValues": [] },
 								{ "__identifier": "travel_y", "__type": "Float", "__value": 160, "__tile": null, "defUid": 24, "realEditorValues": [{ "id": "V_Float", "params": [160] }] },
-								{ "__identifier": "duration", "__type": "Float", "__value": 2, "__tile": null, "defUid": 25, "realEditorValues": [{ "id": "V_Float", "params": [2] }] },
-								{ "__identifier": "pause_time", "__type": "Float", "__value": 0, "__tile": null, "defUid": 26, "realEditorValues": [] }
+								{ "__identifier": "duration", "__type": "Float", "__value": 1.5, "__tile": null, "defUid": 25, "realEditorValues": [{ "id": "V_Float", "params": [1.5] }] },
+								{ "__identifier": "pause_time", "__type": "Float", "__value": 1, "__tile": null, "defUid": 26, "realEditorValues": [{ "id": "V_Float", "params": [1] }] }
 							],
 							"__worldX": 464,
 							"__worldY": 280
@@ -760,7 +760,7 @@
 							"__tags": [],
 							"__tile": null,
 							"__smartColor": "#63C74D",
-							"iid": "e9f272b0-d380-11f0-8df8-4be0bd7ddc32",
+							"iid": "b71abc30-d380-11f0-bea7-d595333684f8",
 							"width": 16,
 							"height": 24,
 							"defUid": 19,
