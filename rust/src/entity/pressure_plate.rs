@@ -1,7 +1,5 @@
-use godot::classes::{AnimatedSprite2D, Area2D, CollisionObject2D, IArea2D};
+use godot::classes::{AnimatedSprite2D, Area2D, IArea2D};
 use godot::prelude::*;
-
-const PLAYER_LAYER: i32 = 1;
 
 #[derive(GodotClass)]
 #[class(base=Area2D)]
@@ -46,11 +44,7 @@ impl IArea2D for PressurePlate {
 impl PressurePlate {
     /// Called when a body enters the pressure plate area
     #[func]
-    fn on_body_entered(&mut self, body: Gd<Node2D>) {
-        if !self.is_player(&body) {
-            return;
-        }
-
+    fn on_body_entered(&mut self, _body: Gd<Node2D>) {
         // Only activate if not already pressed
         if !self.pressed {
             self.pressed = true;
@@ -62,26 +56,13 @@ impl PressurePlate {
 
     /// Called when a body exits the pressure plate area
     #[func]
-    fn on_body_exited(&mut self, body: Gd<Node2D>) {
-        if !self.is_player(&body) {
-            return;
-        }
-
+    fn on_body_exited(&mut self, _body: Gd<Node2D>) {
         // Deactivate the plate
         if self.pressed {
             self.pressed = false;
             self.sprite.set_animation("inactive");
             self.sprite.stop();
             godot_print!("Pressure plate deactivated!");
-        }
-    }
-
-    /// Check if the given body is the player
-    fn is_player(&self, body: &Gd<Node2D>) -> bool {
-        if let Ok(collision_obj) = body.clone().try_cast::<CollisionObject2D>() {
-            collision_obj.get_collision_layer_value(PLAYER_LAYER)
-        } else {
-            false
         }
     }
 

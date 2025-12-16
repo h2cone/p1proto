@@ -5,7 +5,7 @@ use std::sync::{Mutex, OnceLock};
 pub const DEFAULT_SAVE_SLOT: usize = 0;
 
 /// Snapshot of player progress for a single save slot.
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct SaveSnapshot {
     pub room: (i32, i32),
     pub position: Vector2,
@@ -43,17 +43,14 @@ pub fn save_checkpoint(slot: usize, room: (i32, i32), position: Vector2) -> Save
     store.ensure_slot(slot);
 
     let snapshot = SaveSnapshot::new(room, position);
-    store.slots[slot] = Some(snapshot.clone());
+    store.slots[slot] = Some(snapshot);
     snapshot
 }
 
 /// Peek at the saved checkpoint for a slot without consuming it.
 pub fn peek_checkpoint(slot: usize) -> Option<SaveSnapshot> {
     let store = store().lock().expect("save store poisoned");
-    store
-        .slots
-        .get(slot)
-        .and_then(|slot_data| slot_data.clone())
+    store.slots.get(slot).and_then(|&slot_data| slot_data)
 }
 
 /// Check if a slot currently has data.
@@ -84,10 +81,7 @@ pub fn take_pending_load() -> Option<SaveSnapshot> {
     let mut store = store().lock().expect("save store poisoned");
     let slot = store.pending_load_slot.take()?;
     store.ensure_slot(slot);
-    store
-        .slots
-        .get(slot)
-        .and_then(|slot_data| slot_data.clone())
+    store.slots.get(slot).and_then(|&slot_data| slot_data)
 }
 
 /// Godot-facing helper for accessing save state from scenes/scripts.
