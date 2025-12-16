@@ -1,15 +1,19 @@
 -- Aseprite Script: Pressure Plate Generator
--- Creates a 16x16 pressure plate sprite
+-- Creates a 20x16 pressure plate sprite
+
+local SPRITE_WIDTH = 20
+local SPRITE_HEIGHT = 16
 
 -- Create new sprite
-local sprite = Sprite(16, 16, ColorMode.RGB)
+local sprite = Sprite(SPRITE_WIDTH, SPRITE_HEIGHT, ColorMode.RGB)
 sprite.filename = "pressure_plate.aseprite"
 
 -- Define colors
-local stoneLight = Color({ r = 180, g = 180, b = 180, a = 255 })
-local stoneDark = Color({ r = 100, g = 100, b = 100, a = 255 })
+local stoneLight = Color({ r = 190, g = 190, b = 190, a = 255 })
+local stoneMid = Color({ r = 120, g = 120, b = 125, a = 255 })
+local stoneDark = Color({ r = 90, g = 90, b = 95, a = 255 })
 local stoneBase = Color({ r = 60, g = 60, b = 70, a = 255 })
-local outline = Color({ r = 30, g = 30, b = 35, a = 255 })
+local activeAccent = Color({ r = 50, g = 230, b = 80, a = 255 })
 
 -- Helper: Fill Rect
 local function fillRect(cel, x, y, w, h, color)
@@ -23,29 +27,6 @@ local function fillRect(cel, x, y, w, h, color)
 	end
 end
 
--- Helper: Draw Rect Outline
-local function drawRect(cel, x, y, w, h, color)
-	local img = cel.image
-	-- Top/Bottom
-	for px = x, x + w - 1 do
-		if y >= 0 and y < img.height then
-			img:drawPixel(px, y, color)
-		end
-		if y + h - 1 >= 0 and y + h - 1 < img.height then
-			img:drawPixel(px, y + h - 1, color)
-		end
-	end
-	-- Left/Right
-	for py = y, y + h - 1 do
-		if x >= 0 and x < img.width then
-			img:drawPixel(x, py, color)
-		end
-		if x + w - 1 >= 0 and x + w - 1 < img.width then
-			img:drawPixel(x + w - 1, py, color)
-		end
-	end
-end
-
 local function newCelWithImage(frame)
 	local img = Image(sprite.width, sprite.height)
 	return sprite:newCel(sprite.layers[1], frame, img)
@@ -53,69 +34,91 @@ end
 
 -- Draw Base (Housing)
 local function drawBase(cel)
-	-- Base is a wider, dark platform
-	-- x=1, y=13, w=14, h=3 (bottom 3 pixels)
-	fillRect(cel, 1, 13, 14, 3, stoneBase)
-	drawRect(cel, 1, 13, 14, 3, outline)
+	local baseY = SPRITE_HEIGHT - 3
+	fillRect(cel, 0, baseY, SPRITE_WIDTH, 3, stoneBase)
+	fillRect(cel, 0, baseY, SPRITE_WIDTH, 1, stoneDark) -- top edge shade
 end
 
--- Draw Plate Up (Inactive)
-local function drawPlateUp(cel)
+local function drawPlate(cel, pressed)
 	drawBase(cel)
-	-- Plate is raised: x=3, y=10, w=10, h=3
-	-- Sits on top of base (y=13)
-	local px, py, pw, ph = 3, 10, 10, 3
 
-	fillRect(cel, px, py, pw, ph, stoneLight)
-	drawRect(cel, px, py, pw, ph, outline)
+	local baseY = SPRITE_HEIGHT - 3
+	local plateY = pressed and (baseY - 1) or (baseY - 3)
+	local plateH = pressed and 2 or 3
+	local topColor = pressed and stoneMid or stoneLight
 
-	-- Side shading (makes it look 3D)
-	for px_i = px + 1, px + pw - 2 do
-		cel.image:drawPixel(px_i, py + ph - 1, stoneDark)
+	-- Shadow under raised plate to emphasize bump (no outline)
+	if not pressed then
+		fillRect(cel, 1, plateY + plateH, SPRITE_WIDTH - 2, 1, stoneDark)
 	end
-end
 
--- Draw Plate Down (Active)
-local function drawPlateDown(cel)
-	drawBase(cel)
-	-- Plate is pushed down: x=3, y=12, w=10, h=2
-	-- Sits inside base (y=13 overlaps)
-	local px, py, pw, ph = 3, 12, 10, 2
+	-- Plate slab
+	fillRect(cel, 0, plateY, SPRITE_WIDTH, plateH, topColor)
+	-- Bevel: darker bottom edge
+	fillRect(cel, 0, plateY + plateH - 1, SPRITE_WIDTH, 1, stoneMid)
+	-- Slight side shading (keeps style consistent without black outline)
+	for py = plateY, plateY + plateH - 1 do
+		cel.image:drawPixel(0, py, stoneMid)
+		cel.image:drawPixel(SPRITE_WIDTH - 1, py, stoneMid)
+	end
 
-	fillRect(cel, px, py, pw, ph, stoneLight)
-	drawRect(cel, px, py, pw, ph, outline)
-
-	-- No side shading, it's flat against the base
+	-- Small active indicator on the top edge corners
+	if pressed then
+		cel.image:drawPixel(1, plateY, activeAccent)
+		cel.image:drawPixel(SPRITE_WIDTH - 2, plateY, activeAccent)
+	end
 end
 
 local frameIndex = 1
 
 -- Tag Helper
-local function createTag(name, fromFrame, toFrame)
-	sprite:newTag(fromFrame, toFrame)
-	sprite.tags[#sprite.tags].name = name
+local tagDefs = {}
+local function defineTag(name, fromFrame, toFrame)
+	table.insert(tagDefs, { name = name, fromFrame = fromFrame, toFrame = toFrame })
+end
+
+local function newFrame()
+	local frame
+	if frameIndex == 1 then
+		frame = sprite.frames[1]
+	else
+		frame = sprite:newEmptyFrame()
+	end
+	frameIndex = frameIndex + 1
+	return frame
 end
 
 -- ==================== INACTIVE (Up) ====================
 local inactiveStart = frameIndex
-local frame = sprite:newEmptyFrame(frameIndex)
-frameIndex = frameIndex + 1
+local frame = newFrame()
 frame.duration = 1.0 -- Static
 local cel = newCelWithImage(frame)
 
-drawPlateUp(cel)
+drawPlate(cel, false)
 
-createTag("inactive", inactiveStart, inactiveStart)
+defineTag("inactive", inactiveStart, inactiveStart)
 
 -- ==================== ACTIVE (Down) ====================
 local activeStart = frameIndex
-local frame2 = sprite:newEmptyFrame(frameIndex)
-frameIndex = frameIndex + 1
+local frame2 = newFrame()
 frame2.duration = 1.0 -- Static
 local cel2 = newCelWithImage(frame2)
 
-drawPlateDown(cel2)
+drawPlate(cel2, true)
 
-createTag("active", activeStart, activeStart)
+defineTag("active", activeStart, activeStart)
 
-app.alert("Pressure Plate Sprite Created!")
+for _, t in ipairs(tagDefs) do
+	local tag = sprite:newTag(t.fromFrame, t.toFrame)
+	tag.name = t.name
+	tag.aniDir = AniDir.FORWARD
+end
+
+local outPath = app.params["out"]
+if outPath ~= nil and outPath ~= "" then
+	sprite:saveAs(outPath)
+end
+
+if app.isUIAvailable then
+	app.alert("Pressure Plate Sprite Created!")
+end

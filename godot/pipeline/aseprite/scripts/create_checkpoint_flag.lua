@@ -1,9 +1,16 @@
 -- Aseprite Script: Checkpoint Generator
--- Creates a 16x24 checkpoint animation
+-- Creates a 16x32 checkpoint animation
+
+local SPRITE_WIDTH = 16
+local SPRITE_HEIGHT = 32
+
+-- Original art was authored for 16x28; keep the same silhouette and pad vertically to 32px.
+local CONTENT_HEIGHT = 28
+local Y_OFFSET = SPRITE_HEIGHT - CONTENT_HEIGHT
 
 -- Create new sprite
-local sprite = Sprite(16, 24, ColorMode.RGB)
-sprite.filename = "checkpoint.aseprite"
+local sprite = Sprite(SPRITE_WIDTH, SPRITE_HEIGHT, ColorMode.RGB)
+sprite.filename = "checkpoint_flag.aseprite"
 
 -- Define colors
 local white = Color({ r = 255, g = 255, b = 255, a = 255 })
@@ -29,14 +36,15 @@ end
 
 -- Draw the pole and base (static elements)
 local function drawPole(cel)
+	local baseY = SPRITE_HEIGHT - 2
 	-- Base
-	fillRect(cel, 6, 22, 4, 2, darkGrey)
-	fillRect(cel, 7, 21, 2, 1, grey)
+	fillRect(cel, 6, baseY, 4, 2, darkGrey)
+	fillRect(cel, 7, baseY - 1, 2, 1, grey)
 
 	-- Pole
-	fillRect(cel, 7, 2, 2, 20, white)
+	fillRect(cel, 7, 1 + Y_OFFSET, 2, CONTENT_HEIGHT - 3, white)
 	-- Pole Topper
-	fillRect(cel, 6, 1, 4, 1, white)
+	fillRect(cel, 6, 0 + Y_OFFSET, 4, 1, white)
 end
 
 -- Draw the flag cloth
@@ -79,12 +87,6 @@ local function drawFlag(cel, y, color, shadeColor, waveOffset)
 	end
 end
 
--- Create tag helper
-local function createTag(name, fromFrame, toFrame)
-	sprite:newTag(fromFrame, toFrame)
-	sprite.tags[#sprite.tags].name = name
-end
-
 local function newCelWithImage(frame)
 	local img = Image(sprite.width, sprite.height)
 	return sprite:newCel(sprite.layers[1], frame, img)
@@ -92,29 +94,43 @@ end
 
 local frameIndex = 1
 
+local tagDefs = {}
+local function defineTag(name, fromFrame, toFrame)
+	table.insert(tagDefs, { name = name, fromFrame = fromFrame, toFrame = toFrame })
+end
+
+local function newFrame()
+	local frame
+	if frameIndex == 1 then
+		frame = sprite.frames[1]
+	else
+		frame = sprite:newEmptyFrame()
+	end
+	frameIndex = frameIndex + 1
+	return frame
+end
+
 -- ==================== UNCHECKED (Idle) ====================
 -- 1 frame: Red flag at bottom
 local uncheckedStart = frameIndex
-local frame = sprite:newEmptyFrame(frameIndex)
-frameIndex = frameIndex + 1
+local frame = newFrame()
 frame.duration = 0.5
 local cel = newCelWithImage(frame)
 
 drawPole(cel)
-drawFlag(cel, 15, red, darkRed, 0) -- Low position
+drawFlag(cel, 19 + Y_OFFSET, red, darkRed, 0) -- Low position
 
-createTag("unchecked", uncheckedStart, frameIndex - 1)
+defineTag("unchecked", uncheckedStart, frameIndex - 1)
 
 -- ==================== RAISING (Transition) ====================
 -- Flag moves up and turns green
 local raisingStart = frameIndex
 local steps = 6
-local startY = 15
-local endY = 3
+local startY = 19 + Y_OFFSET
+local endY = 1 + Y_OFFSET
 
 for i = 0, steps - 1 do
-	local frame = sprite:newEmptyFrame(frameIndex)
-	frameIndex = frameIndex + 1
+	local frame = newFrame()
 	frame.duration = 0.08
 	local cel = newCelWithImage(frame)
 
@@ -131,14 +147,13 @@ for i = 0, steps - 1 do
 	drawFlag(cel, currentY, currentColor, currentShade, (i % 2 == 0) and 1 or -1)
 end
 
-createTag("raising", raisingStart, frameIndex - 1)
+defineTag("raising", raisingStart, frameIndex - 1)
 
 -- ==================== CHECKED (Active) ====================
 -- Loop: Green flag waving at top
 local checkedStart = frameIndex
 for i = 1, 4 do
-	local frame = sprite:newEmptyFrame(frameIndex)
-	frameIndex = frameIndex + 1
+	local frame = newFrame()
 	frame.duration = 0.15
 	local cel = newCelWithImage(frame)
 
@@ -156,9 +171,22 @@ for i = 1, 4 do
 		wave = -1
 	end
 
-	drawFlag(cel, 3, green, darkGreen, wave)
+	drawFlag(cel, 1 + Y_OFFSET, green, darkGreen, wave)
 end
 
-createTag("checked", checkedStart, frameIndex - 1)
+defineTag("checked", checkedStart, frameIndex - 1)
 
-app.alert("Checkpoint Sprite Created!")
+for _, t in ipairs(tagDefs) do
+	local tag = sprite:newTag(t.fromFrame, t.toFrame)
+	tag.name = t.name
+	tag.aniDir = AniDir.FORWARD
+end
+
+local outPath = app.params["out"]
+if outPath ~= nil and outPath ~= "" then
+	sprite:saveAs(outPath)
+end
+
+if app.isUIAvailable then
+	app.alert("Checkpoint Sprite Created!")
+end

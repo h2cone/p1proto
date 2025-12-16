@@ -1,17 +1,18 @@
 [gd_scene load_steps=3 format=3 uid="uid://b1hxq2txyp3j3"]
 
-[ext_resource type="SpriteFrames" uid="uid://7fgei2toj0rq" path="res://pipeline/aseprite/checkpoint.res" id="1_checkpoint_sprite"]
+[ext_resource type="SpriteFrames" uid="uid://7fgei2toj0rq" path="res://pipeline/aseprite/checkpoint_flag.res" id="1_vye1w"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_checkpoint"]
-size = Vector2(16, 24)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vye1w"]
+size = Vector2(10, 28)
 
 [node name="Checkpoint" type="Checkpoint"]
 collision_layer = 0
 monitorable = false
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
-sprite_frames = ExtResource("1_checkpoint_sprite")
-animation = &"unchecked"
+sprite_frames = ExtResource("1_vye1w")
+animation = &"checked"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_checkpoint")
+position = Vector2(3, 2)
+shape = SubResource("RectangleShape2D_vye1w")
