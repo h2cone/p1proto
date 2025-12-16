@@ -1,9 +1,17 @@
-[gd_scene load_steps=2 format=3 uid="uid://vucb2lx1yvyq"]
+[gd_scene load_steps=3 format=3 uid="uid://vucb2lx1yvyq"]
 
 [ext_resource type="SpriteFrames" uid="uid://ry6cgfmy25t5" path="res://pipeline/aseprite/pressure_plate.res" id="1_okruh"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_okruh"]
+size = Vector2(20, 6)
+
 [node name="PressurePlate" type="PressurePlate"]
+collision_layer = 0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = ExtResource("1_okruh")
 animation = &"inactive"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 5)
+shape = SubResource("RectangleShape2D_okruh")

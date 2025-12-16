@@ -2,6 +2,7 @@
 
 const CHECKPOINT_SCENE_PATH := "res://entity/checkpoint.tscn"
 const MOVING_PLATFORM_SCENE_PATH := "res://entity/moving_platform.tscn"
+const PRESSURE_PLATE_SCENE_PATH := "res://entity/pressure_plate.tscn"
 
 # Entity Post-Import Script for LDtk Importer
 # Automatically sets up entities during import based on their identifier
@@ -14,6 +15,7 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 
 	var checkpoint_count := 0
 	var platform_count := 0
+	var pressure_plate_count := 0
 	for entity in entities:
 		var entity_identifier := get_entity_identifier(entity)
 		match entity_identifier:
@@ -23,6 +25,9 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 			"MovingPlatform":
 				platform_count += 1
 				setup_moving_platform(entity_layer, entity, platform_count)
+			"PressurePlate":
+				pressure_plate_count += 1
+				setup_pressure_plate(entity_layer, entity, pressure_plate_count)
 			_:
 				pass
 
@@ -213,3 +218,33 @@ func get_entity_field(entity_data: Variant, field_name: String, default_value: V
 		if entity_data.fields.has(field_name):
 			return entity_data.fields[field_name]
 	return default_value
+
+
+func setup_pressure_plate(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
+	"""Set up a PressurePlate entity with all required components"""
+
+	print("Setting up PressurePlate: ", get_entity_identifier(entity_data))
+
+	var owner := resolve_owner(entity_layer)
+
+	# Load pressure plate scene
+	var pressure_plate_scene = load(PRESSURE_PLATE_SCENE_PATH)
+	if not pressure_plate_scene:
+		printerr("Failed to load pressure_plate.tscn at: ", PRESSURE_PLATE_SCENE_PATH)
+		return
+
+	# Instance the pressure plate scene
+	var pressure_plate = pressure_plate_scene.instantiate()
+	pressure_plate.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
+	pressure_plate.name = build_entity_name(entity_data, sequence)
+
+	# Add metadata
+	pressure_plate.set_meta("ldtk_iid", get_entity_iid(entity_data))
+	pressure_plate.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
+	pressure_plate.set_meta("entity_type", "pressure_plate")
+
+	# Add to scene tree
+	entity_layer.add_child(pressure_plate)
+	set_owner_if_present(pressure_plate, owner)
+
+	print("  - Instantiated pressure_plate.tscn")

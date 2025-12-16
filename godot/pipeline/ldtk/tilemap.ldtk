@@ -11,7 +11,7 @@
 	"iid": "b72e8f40-ac70-11f0-a08c-3de4c05ee5af",
 	"jsonVersion": "1.5.3",
 	"appBuildId": 473703,
-	"nextUid": 28,
+	"nextUid": 29,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "GridVania",
@@ -330,6 +330,41 @@
 					"tilesetUid": null
 				}
 			]
+		},
+		{
+			"identifier": "PressurePlate",
+			"uid": 28,
+			"tags": [],
+			"exportToToc": false,
+			"allowOutOfBounds": false,
+			"doc": null,
+			"width": 20,
+			"height": 16,
+			"resizableX": false,
+			"resizableY": false,
+			"minWidth": null,
+			"maxWidth": null,
+			"minHeight": null,
+			"maxHeight": null,
+			"keepAspectRatio": false,
+			"tileOpacity": 1,
+			"fillOpacity": 1,
+			"lineOpacity": 1,
+			"hollow": false,
+			"color": "#808080",
+			"renderMode": "Rectangle",
+			"showName": true,
+			"tilesetId": null,
+			"tileRenderMode": "FitInside",
+			"tileRect": null,
+			"uiTileRect": null,
+			"nineSliceBorders": [],
+			"maxCount": 0,
+			"limitScope": "PerLevel",
+			"limitBehavior": "MoveLastOne",
+			"pivotX": 0,
+			"pivotY": 0,
+			"fieldDefs": []
 		}
 	], "tilesets": [
 		{
@@ -400,7 +435,24 @@
 					"seed": 6843670,
 					"overrideTilesetUid": null,
 					"gridTiles": [],
-					"entityInstances": []
+					"entityInstances": [
+						{
+							"__identifier": "PressurePlate",
+							"__grid": [19,27],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#808080",
+							"iid": "e491f620-d380-11f0-a516-73a8752253d6",
+							"width": 20,
+							"height": 16,
+							"defUid": 28,
+							"px": [152,216],
+							"fieldInstances": [],
+							"__worldX": 152,
+							"__worldY": 456
+						}
+					]
 				},
 				{
 					"__identifier": "Tiles",
