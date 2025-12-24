@@ -148,7 +148,7 @@
 			"fieldDefs": []
 		},
 		{
-			"identifier": "MovingPlatform",
+			"identifier": "Moving_platform",
 			"uid": 21,
 			"tags": [],
 			"exportToToc": false,
@@ -332,7 +332,7 @@
 			]
 		},
 		{
-			"identifier": "PressurePlate",
+			"identifier": "Pressure_plate",
 			"uid": 28,
 			"tags": [],
 			"exportToToc": false,
@@ -437,7 +437,7 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "PressurePlate",
+							"__identifier": "Pressure_plate",
 							"__grid": [19,27],
 							"__pivot": [0,0],
 							"__tags": [],
@@ -637,7 +637,7 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "MovingPlatform",
+							"__identifier": "Moving_platform",
 							"__grid": [18,5],
 							"__pivot": [0,0],
 							"__tags": [],

@@ -1,11 +1,10 @@
 @tool
 
-const CHECKPOINT_SCENE_PATH := "res://entity/checkpoint.tscn"
-const MOVING_PLATFORM_SCENE_PATH := "res://entity/moving_platform.tscn"
-const PRESSURE_PLATE_SCENE_PATH := "res://entity/pressure_plate.tscn"
-
 # Entity Post-Import Script for LDtk Importer
 # Automatically sets up entities during import based on their identifier
+
+# Entities that require room_coords to be set
+const ENTITIES_WITH_ROOM_COORDS := ["checkpoint"]
 
 
 func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
@@ -13,62 +12,81 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 
 	print("Processing Entity Layer: ", entity_layer.name, " | Entity Count: ", entities.size())
 
-	var checkpoint_count := 0
-	var platform_count := 0
-	var pressure_plate_count := 0
+	var entity_counts := { }
 	for entity in entities:
-		var entity_identifier := get_entity_identifier(entity)
-		match entity_identifier:
-			"Checkpoint":
-				checkpoint_count += 1
-				setup_checkpoint(entity_layer, entity, checkpoint_count)
-			"MovingPlatform":
-				platform_count += 1
-				setup_moving_platform(entity_layer, entity, platform_count)
-			"PressurePlate":
-				pressure_plate_count += 1
-				setup_pressure_plate(entity_layer, entity, pressure_plate_count)
+		var entity_key := get_entity_key(entity)
+
+		# Track entity sequence numbers
+		if not entity_counts.has(entity_key):
+			entity_counts[entity_key] = 0
+		entity_counts[entity_key] += 1
+
+		# Handle special entities with custom fields, otherwise use generic setup
+		match entity_key:
+			"moving_platform":
+				setup_moving_platform(entity_layer, entity, entity_counts[entity_key])
 			_:
-				pass
+				setup_generic_entity(entity_layer, entity, entity_counts[entity_key])
 
 	return entity_layer
 
 
-func setup_checkpoint(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
-	"""Set up a Checkpoint entity with all required components"""
+func get_entity_key(entity_data: Variant) -> String:
+	"""Get lowercase entity identifier used for scene path lookup"""
+	return get_entity_identifier(entity_data).to_lower()
 
-	print("Setting up Checkpoint: ", get_entity_identifier(entity_data))
 
-	var owner := resolve_owner(entity_layer)
+func get_scene_path(entity_key: String) -> String:
+	"""Build scene path from entity key"""
+	return "res://entity/%s.tscn" % entity_key
 
-	# Load checkpoint scene
-	var checkpoint_scene = load(CHECKPOINT_SCENE_PATH)
-	if not checkpoint_scene:
-		printerr("Failed to load checkpoint.tscn at: ", CHECKPOINT_SCENE_PATH)
+
+func setup_generic_entity(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
+	"""Set up a generic entity without custom LDtk fields"""
+	var entity_key := get_entity_key(entity_data)
+	var scene_path := get_scene_path(entity_key)
+
+	print("Setting up %s" % get_entity_identifier(entity_data))
+
+	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
+	if not instance:
 		return
 
-	# Instance the checkpoint scene
-	var checkpoint = checkpoint_scene.instantiate()
-	checkpoint.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
-	checkpoint.name = build_entity_name(entity_data, sequence)
+	# Set room_coords for entities that need it
+	if entity_key in ENTITIES_WITH_ROOM_COORDS:
+		var room_coords: Variant = get_room_coords(entity_layer)
+		if room_coords != null:
+			instance.set("room_coords", room_coords)
+		else:
+			printerr("%s room coords could not be resolved for layer: %s" % [entity_key, entity_layer.name])
 
-	# Set room coordinates
-	var room_coords: Variant = get_room_coords(entity_layer)
-	if room_coords != null:
-		checkpoint.set("room_coords", room_coords)
-	else:
-		printerr("Checkpoint room coords could not be resolved for layer: ", entity_layer.name)
+	finalize_entity(entity_layer, instance, entity_data, entity_key)
+	print("  - Instantiated %s.tscn" % entity_key)
 
-	# Add metadata
-	checkpoint.set_meta("ldtk_iid", get_entity_iid(entity_data))
-	checkpoint.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
-	checkpoint.set_meta("entity_type", "checkpoint")
 
-	# Add to scene tree
-	entity_layer.add_child(checkpoint)
-	set_owner_if_present(checkpoint, owner)
+func instantiate_entity(entity_layer: LDTKEntityLayer, entity_data: Variant, scene_path: String, sequence: int) -> Node:
+	"""Load and instantiate entity scene with position and name"""
+	var scene = load(scene_path)
+	if not scene:
+		printerr("Failed to load scene at: ", scene_path)
+		return null
 
-	print("  - Instantiated checkpoint.tscn")
+	var instance = scene.instantiate()
+	instance.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
+	instance.name = build_entity_name(entity_data, sequence)
+	return instance
+
+
+func finalize_entity(entity_layer: LDTKEntityLayer, instance: Node, entity_data: Variant, entity_key: String) -> void:
+	"""Add metadata and attach entity to scene tree"""
+	var owner := resolve_owner(entity_layer)
+
+	instance.set_meta("ldtk_iid", get_entity_iid(entity_data))
+	instance.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
+	instance.set_meta("entity_type", entity_key)
+
+	entity_layer.add_child(instance)
+	set_owner_if_present(instance, owner)
 
 
 func get_entity_identifier(entity_data: Variant) -> String:
@@ -167,44 +185,28 @@ func set_owner_if_present(node: Node, owner: Node) -> void:
 
 
 func setup_moving_platform(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
-	"""Set up a MovingPlatform entity with all required components"""
+	"""Set up a MovingPlatform entity with custom LDtk fields"""
+	var entity_key := "moving_platform"
+	var scene_path := get_scene_path(entity_key)
 
-	print("Setting up MovingPlatform: ", get_entity_identifier(entity_data))
+	print("Setting up %s" % get_entity_identifier(entity_data))
 
-	var owner := resolve_owner(entity_layer)
+	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
+	if not instance:
+		return
 
-	# Read custom fields from LDtk
+	# Read and apply custom fields from LDtk
 	var travel_x: float = get_entity_field(entity_data, "travel_x", 96.0)
 	var travel_y: float = get_entity_field(entity_data, "travel_y", 0.0)
 	var duration: float = get_entity_field(entity_data, "duration", 2.0)
 	var pause_time: float = get_entity_field(entity_data, "pause_time", 0.5)
 
-	# Try to load the prefab scene
-	var platform_scene = load(MOVING_PLATFORM_SCENE_PATH)
-	if not platform_scene:
-		printerr("Failed to load moving_platform.tscn at: ", MOVING_PLATFORM_SCENE_PATH)
-		return
+	instance.set("travel", Vector2(travel_x, travel_y))
+	instance.set("duration", duration)
+	instance.set("pause_time", pause_time)
 
-	# Instance the platform scene
-	var platform = platform_scene.instantiate()
-	platform.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
-	platform.name = build_entity_name(entity_data, sequence)
-
-	# Set MovingPlatform properties
-	platform.set("travel", Vector2(travel_x, travel_y))
-	platform.set("duration", duration)
-	platform.set("pause_time", pause_time)
-
-	# Add metadata
-	platform.set_meta("ldtk_iid", get_entity_iid(entity_data))
-	platform.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
-	platform.set_meta("entity_type", "moving_platform")
-
-	# Add to scene tree
-	entity_layer.add_child(platform)
-	set_owner_if_present(platform, owner)
-
-	print("  - Instantiated moving_platform.tscn")
+	finalize_entity(entity_layer, instance, entity_data, entity_key)
+	print("  - Instantiated %s.tscn" % entity_key)
 	print("  - Configured: travel=(%.1f, %.1f), duration=%.1fs, pause=%.1fs" % [travel_x, travel_y, duration, pause_time])
 
 
@@ -218,33 +220,3 @@ func get_entity_field(entity_data: Variant, field_name: String, default_value: V
 		if entity_data.fields.has(field_name):
 			return entity_data.fields[field_name]
 	return default_value
-
-
-func setup_pressure_plate(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
-	"""Set up a PressurePlate entity with all required components"""
-
-	print("Setting up PressurePlate: ", get_entity_identifier(entity_data))
-
-	var owner := resolve_owner(entity_layer)
-
-	# Load pressure plate scene
-	var pressure_plate_scene = load(PRESSURE_PLATE_SCENE_PATH)
-	if not pressure_plate_scene:
-		printerr("Failed to load pressure_plate.tscn at: ", PRESSURE_PLATE_SCENE_PATH)
-		return
-
-	# Instance the pressure plate scene
-	var pressure_plate = pressure_plate_scene.instantiate()
-	pressure_plate.position = get_entity_anchor_position(entity_data, Vector2(0.5, 0.5))
-	pressure_plate.name = build_entity_name(entity_data, sequence)
-
-	# Add metadata
-	pressure_plate.set_meta("ldtk_iid", get_entity_iid(entity_data))
-	pressure_plate.set_meta("ldtk_identifier", get_entity_identifier(entity_data))
-	pressure_plate.set_meta("entity_type", "pressure_plate")
-
-	# Add to scene tree
-	entity_layer.add_child(pressure_plate)
-	set_owner_if_present(pressure_plate, owner)
-
-	print("  - Instantiated pressure_plate.tscn")
