@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://b1hxq2txyp3j3"]
 
-[ext_resource type="SpriteFrames" uid="uid://7fgei2toj0rq" path="res://pipeline/aseprite/checkpoint_flag.res" id="1_vye1w"]
+[ext_resource type="SpriteFrames" uid="uid://7fgei2toj0rq" path="res://pipeline/aseprite/wizard/checkpoint_flag.res" id="1_vye1w"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_vye1w"]
 size = Vector2(10, 28)

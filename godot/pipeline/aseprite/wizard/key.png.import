@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://7mxq3gpe7icx"
-path="res://.godot/imported/jelly_character.png-c8fda33687d4cb3043ee1ce7bbf69ce4.ctex"
+uid="uid://cvj0ran7vwsu"
+path="res://.godot/imported/key.png-47142e397ccd66892f04950f5ecc5f68.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://pipeline/aseprite/jelly_character.png"
-dest_files=["res://.godot/imported/jelly_character.png-c8fda33687d4cb3043ee1ce7bbf69ce4.ctex"]
+source_file="res://pipeline/aseprite/wizard/key.png"
+dest_files=["res://.godot/imported/key.png-47142e397ccd66892f04950f5ecc5f68.ctex"]
 
 [params]
 

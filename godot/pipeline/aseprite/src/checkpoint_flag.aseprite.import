@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://xylr0wj74any"
+path="res://.godot/imported/checkpoint_flag.aseprite-cf0f5e1471e163b5a08c8a375e27c855.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/src/checkpoint_flag.aseprite"
+dest_files=["res://.godot/imported/checkpoint_flag.aseprite-cf0f5e1471e163b5a08c8a375e27c855.res"]
+
+[params]
+

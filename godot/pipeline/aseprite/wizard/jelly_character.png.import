@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://h0g8kgpdihyt"
-path="res://.godot/imported/checkpoint_flag.png-264be2d2e1195a78f7e0f5ea19329f6b.ctex"
+uid="uid://7mxq3gpe7icx"
+path="res://.godot/imported/jelly_character.png-2d181352028de3227349f9727bd8301f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://pipeline/aseprite/checkpoint_flag.png"
-dest_files=["res://.godot/imported/checkpoint_flag.png-264be2d2e1195a78f7e0f5ea19329f6b.ctex"]
+source_file="res://pipeline/aseprite/wizard/jelly_character.png"
+dest_files=["res://.godot/imported/jelly_character.png-2d181352028de3227349f9727bd8301f.ctex"]
 
 [params]
 

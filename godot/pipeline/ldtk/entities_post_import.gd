@@ -64,7 +64,7 @@ func setup_generic_entity(entity_layer: LDTKEntityLayer, entity_data: Variant, s
 	print("  - Instantiated %s.tscn" % entity_key)
 
 
-func instantiate_entity(entity_layer: LDTKEntityLayer, entity_data: Variant, scene_path: String, sequence: int) -> Node:
+func instantiate_entity(_entity_layer: LDTKEntityLayer, entity_data: Variant, scene_path: String, sequence: int) -> Node:
 	"""Load and instantiate entity scene with position and name"""
 	var scene = load(scene_path)
 	if not scene:

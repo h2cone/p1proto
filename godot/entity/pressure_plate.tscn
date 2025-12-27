@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://vucb2lx1yvyq"]
 
-[ext_resource type="SpriteFrames" uid="uid://ry6cgfmy25t5" path="res://pipeline/aseprite/pressure_plate.res" id="1_okruh"]
+[ext_resource type="SpriteFrames" uid="uid://ry6cgfmy25t5" path="res://pipeline/aseprite/wizard/pressure_plate.res" id="1_okruh"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_okruh"]
 size = Vector2(20, 6)

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dcu3unntfxocr"
-path="res://.godot/imported/pressure_plate.png-cf1ae1f30cba0959c7b512675650a072.ctex"
+uid="uid://dndwi4kc8l1et"
+path="res://.godot/imported/lock.png-14fd9322ac0043bf08164cfc6a06d81b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://pipeline/aseprite/pressure_plate.png"
-dest_files=["res://.godot/imported/pressure_plate.png-cf1ae1f30cba0959c7b512675650a072.ctex"]
+source_file="res://pipeline/aseprite/wizard/lock.png"
+dest_files=["res://.godot/imported/lock.png-14fd9322ac0043bf08164cfc6a06d81b.ctex"]
 
 [params]
 
