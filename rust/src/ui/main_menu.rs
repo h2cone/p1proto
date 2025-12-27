@@ -66,10 +66,13 @@ impl MainMenu {
             .connect_other(&main_menu, Self::on_quit_button_pressed);
     }
 
-    /// Handle play button press - load the game scene
+    /// Handle play button press - reset state and load the game scene
     #[func]
     fn on_play_button_pressed(&mut self) {
         godot_print!("Play button pressed");
+
+        // Reset all game state for new game
+        save::reset_all();
 
         // Load and switch to game scene
         if let Some(mut tree) = self.base().get_tree() {

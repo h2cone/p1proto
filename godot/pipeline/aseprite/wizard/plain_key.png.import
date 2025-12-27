@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dndwi4kc8l1et"
-path="res://.godot/imported/lock.png-14fd9322ac0043bf08164cfc6a06d81b.ctex"
+uid="uid://cyadwsj76eqpg"
+path="res://.godot/imported/plain_key.png-a37828d2f5df297ef47299698b1e4ed9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://pipeline/aseprite/wizard/lock.png"
-dest_files=["res://.godot/imported/lock.png-14fd9322ac0043bf08164cfc6a06d81b.ctex"]
+source_file="res://pipeline/aseprite/wizard/plain_key.png"
+dest_files=["res://.godot/imported/plain_key.png-a37828d2f5df297ef47299698b1e4ed9.ctex"]
 
 [params]
 

@@ -1,4 +1,5 @@
 use godot::prelude::*;
+use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
 /// Default save slot index. Designed for easy expansion to multiple slots later.
@@ -17,11 +18,18 @@ impl SaveSnapshot {
     }
 }
 
+/// Unique identifier for an entity (room_x, room_y, pos_x, pos_y)
+type EntityId = (i32, i32, i32, i32);
+
 #[derive(Default)]
 struct SaveStore {
     slots: Vec<Option<SaveSnapshot>>,
     /// Which slot should be loaded on the next game start.
     pending_load_slot: Option<usize>,
+    /// Set of unlocked locks (identified by room coords + position)
+    unlocked_locks: HashSet<EntityId>,
+    /// Set of collected keys (identified by room coords + position)
+    collected_keys: HashSet<EntityId>,
 }
 
 impl SaveStore {
@@ -82,6 +90,43 @@ pub fn take_pending_load() -> Option<SaveSnapshot> {
     let slot = store.pending_load_slot.take()?;
     store.ensure_slot(slot);
     store.slots.get(slot).and_then(|&slot_data| slot_data)
+}
+
+/// Mark a lock as unlocked (persists across room transitions)
+pub fn mark_lock_unlocked(room: (i32, i32), position: Vector2) {
+    let mut store = store().lock().expect("save store poisoned");
+    let id = (room.0, room.1, position.x as i32, position.y as i32);
+    store.unlocked_locks.insert(id);
+}
+
+/// Check if a lock has been unlocked
+pub fn is_lock_unlocked(room: (i32, i32), position: Vector2) -> bool {
+    let store = store().lock().expect("save store poisoned");
+    let id = (room.0, room.1, position.x as i32, position.y as i32);
+    store.unlocked_locks.contains(&id)
+}
+
+/// Mark a key as collected (persists across room transitions)
+pub fn mark_key_collected(room: (i32, i32), position: Vector2) {
+    let mut store = store().lock().expect("save store poisoned");
+    let id = (room.0, room.1, position.x as i32, position.y as i32);
+    store.collected_keys.insert(id);
+}
+
+/// Check if a key has been collected
+pub fn is_key_collected(room: (i32, i32), position: Vector2) -> bool {
+    let store = store().lock().expect("save store poisoned");
+    let id = (room.0, room.1, position.x as i32, position.y as i32);
+    store.collected_keys.contains(&id)
+}
+
+/// Reset all game state (for new game)
+pub fn reset_all() {
+    let mut store = store().lock().expect("save store poisoned");
+    store.slots.clear();
+    store.pending_load_slot = None;
+    store.unlocked_locks.clear();
+    store.collected_keys.clear();
 }
 
 /// Godot-facing helper for accessing save state from scenes/scripts.

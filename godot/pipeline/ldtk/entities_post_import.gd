@@ -4,7 +4,7 @@
 # Automatically sets up entities during import based on their identifier
 
 # Entities that require room_coords to be set
-const ENTITIES_WITH_ROOM_COORDS := ["checkpoint"]
+const ENTITIES_WITH_ROOM_COORDS := ["checkpoint", "plain_key", "plain_lock"]
 
 
 func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:

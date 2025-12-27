@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://c7b5gcfm3mavt"
+path="res://.godot/imported/plain_lock.aseprite-088211b64b693579c7c2b4bf42038235.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/src/plain_lock.aseprite"
+dest_files=["res://.godot/imported/plain_lock.aseprite-088211b64b693579c7c2b4bf42038235.res"]
+
+[params]
+

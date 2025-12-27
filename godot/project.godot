@@ -60,6 +60,8 @@ act_down={
 2d_physics/layer_1="player"
 2d_physics/layer_2="tile"
 2d_physics/layer_3="moving_platform"
+2d_physics/layer_4="plain_lock"
+2d_physics/layer_5="plain_key"
 
 [rendering]
 

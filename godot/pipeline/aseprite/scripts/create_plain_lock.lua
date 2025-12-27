@@ -2,7 +2,7 @@
 -- Creates a 32x32 lock block (larger than 16x24 player)
 
 local sprite = Sprite(32, 32, ColorMode.RGB)
-sprite.filename = "lock.aseprite"
+sprite.filename = "plain_lock.aseprite"
 
 -- Palette
 local goldLight = Color({ r = 255, g = 215, b = 0, a = 255 })

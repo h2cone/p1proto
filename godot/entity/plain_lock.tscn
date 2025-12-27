@@ -1,0 +1,26 @@
+[gd_scene load_steps=4 format=3 uid="uid://cudeplwfmqk0u"]
+
+[ext_resource type="SpriteFrames" uid="uid://b6lrgukc38qro" path="res://pipeline/aseprite/wizard/plain_lock.res" id="1_je5fd"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_je5fd"]
+size = Vector2(30, 30)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_detect"]
+size = Vector2(32, 32)
+
+[node name="PlainLock" type="PlainLock"]
+collision_layer = 8
+collision_mask = 0
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_je5fd")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_je5fd")
+
+[node name="DetectArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectArea"]
+shape = SubResource("RectangleShape2D_detect")

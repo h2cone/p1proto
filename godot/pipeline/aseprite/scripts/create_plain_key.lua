@@ -2,7 +2,7 @@
 -- Creates a 16x16 key with spinning animation
 
 local sprite = Sprite(16, 16, ColorMode.RGB)
-sprite.filename = "key.aseprite"
+sprite.filename = "plain_key.aseprite"
 
 -- Palette
 local goldLight = Color({ r = 255, g = 223, b = 0, a = 255 })

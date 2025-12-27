@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3 uid="uid://de5o0snu38gvr"]
+
+[ext_resource type="SpriteFrames" uid="uid://co88uf82fpsm5" path="res://pipeline/aseprite/wizard/plain_key.res" id="1_2xix4"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_2xix4"]
+size = Vector2(7, 12)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_k738v"]
+size = Vector2(7, 12)
+
+[node name="PlainKey" type="PlainKey"]
+collision_layer = 16
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_2xix4")
+animation = &"spin"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_2xix4")
+
+[node name="DetectArea" type="Area2D" parent="."]
+collision_layer = 8
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectArea"]
+shape = SubResource("RectangleShape2D_k738v")
