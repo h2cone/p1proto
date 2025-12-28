@@ -1,6 +1,6 @@
 use godot::prelude::*;
+use std::cell::RefCell;
 use std::collections::HashSet;
-use std::sync::{Mutex, OnceLock};
 
 /// Default save slot index. Designed for easy expansion to multiple slots later.
 pub const DEFAULT_SAVE_SLOT: usize = 0;
@@ -40,93 +40,98 @@ impl SaveStore {
     }
 }
 
-fn store() -> &'static Mutex<SaveStore> {
-    static STORE: OnceLock<Mutex<SaveStore>> = OnceLock::new();
-    STORE.get_or_init(|| Mutex::new(SaveStore::default()))
+thread_local! {
+    static STORE: RefCell<SaveStore> = RefCell::new(SaveStore::default());
 }
 
 /// Save checkpoint data into the specified slot.
 pub fn save_checkpoint(slot: usize, room: (i32, i32), position: Vector2) -> SaveSnapshot {
-    let mut store = store().lock().expect("save store poisoned");
-    store.ensure_slot(slot);
-
-    let snapshot = SaveSnapshot::new(room, position);
-    store.slots[slot] = Some(snapshot);
-    snapshot
+    STORE.with_borrow_mut(|store| {
+        store.ensure_slot(slot);
+        let snapshot = SaveSnapshot::new(room, position);
+        store.slots[slot] = Some(snapshot);
+        snapshot
+    })
 }
 
 /// Peek at the saved checkpoint for a slot without consuming it.
 pub fn peek_checkpoint(slot: usize) -> Option<SaveSnapshot> {
-    let store = store().lock().expect("save store poisoned");
-    store.slots.get(slot).and_then(|&slot_data| slot_data)
+    STORE.with_borrow(|store| store.slots.get(slot).and_then(|&slot_data| slot_data))
 }
 
 /// Check if a slot currently has data.
 pub fn has_save(slot: usize) -> bool {
-    let store = store().lock().expect("save store poisoned");
-    store
-        .slots
-        .get(slot)
-        .and_then(|slot_data| slot_data.as_ref())
-        .is_some()
+    STORE.with_borrow(|store| {
+        store
+            .slots
+            .get(slot)
+            .and_then(|slot_data| slot_data.as_ref())
+            .is_some()
+    })
 }
 
 /// Mark a slot to be loaded on the next game scene load.
 pub fn queue_load(slot: usize) -> bool {
-    let mut store = store().lock().expect("save store poisoned");
-    store.ensure_slot(slot);
-
-    if store.slots[slot].is_some() {
-        store.pending_load_slot = Some(slot);
-        true
-    } else {
-        false
-    }
+    STORE.with_borrow_mut(|store| {
+        store.ensure_slot(slot);
+        if store.slots[slot].is_some() {
+            store.pending_load_slot = Some(slot);
+            true
+        } else {
+            false
+        }
+    })
 }
 
 /// Consume the pending load request, returning the snapshot if present.
 pub fn take_pending_load() -> Option<SaveSnapshot> {
-    let mut store = store().lock().expect("save store poisoned");
-    let slot = store.pending_load_slot.take()?;
-    store.ensure_slot(slot);
-    store.slots.get(slot).and_then(|&slot_data| slot_data)
+    STORE.with_borrow_mut(|store| {
+        let slot = store.pending_load_slot.take()?;
+        store.ensure_slot(slot);
+        store.slots.get(slot).and_then(|&slot_data| slot_data)
+    })
 }
 
 /// Mark a lock as unlocked (persists across room transitions)
 pub fn mark_lock_unlocked(room: (i32, i32), position: Vector2) {
-    let mut store = store().lock().expect("save store poisoned");
-    let id = (room.0, room.1, position.x as i32, position.y as i32);
-    store.unlocked_locks.insert(id);
+    STORE.with_borrow_mut(|store| {
+        let id = (room.0, room.1, position.x as i32, position.y as i32);
+        store.unlocked_locks.insert(id);
+    });
 }
 
 /// Check if a lock has been unlocked
 pub fn is_lock_unlocked(room: (i32, i32), position: Vector2) -> bool {
-    let store = store().lock().expect("save store poisoned");
-    let id = (room.0, room.1, position.x as i32, position.y as i32);
-    store.unlocked_locks.contains(&id)
+    STORE.with_borrow(|store| {
+        let id = (room.0, room.1, position.x as i32, position.y as i32);
+        store.unlocked_locks.contains(&id)
+    })
 }
 
 /// Mark a key as collected (persists across room transitions)
 pub fn mark_key_collected(room: (i32, i32), position: Vector2) {
-    let mut store = store().lock().expect("save store poisoned");
-    let id = (room.0, room.1, position.x as i32, position.y as i32);
-    store.collected_keys.insert(id);
+    STORE.with_borrow_mut(|store| {
+        let id = (room.0, room.1, position.x as i32, position.y as i32);
+        store.collected_keys.insert(id);
+    });
 }
 
 /// Check if a key has been collected
 pub fn is_key_collected(room: (i32, i32), position: Vector2) -> bool {
-    let store = store().lock().expect("save store poisoned");
-    let id = (room.0, room.1, position.x as i32, position.y as i32);
-    store.collected_keys.contains(&id)
+    STORE.with_borrow(|store| {
+        let id = (room.0, room.1, position.x as i32, position.y as i32);
+        store.collected_keys.contains(&id)
+    })
 }
 
 /// Reset all game state (for new game)
 pub fn reset_all() {
-    let mut store = store().lock().expect("save store poisoned");
-    store.slots.clear();
-    store.pending_load_slot = None;
-    store.unlocked_locks.clear();
-    store.collected_keys.clear();
+    STORE.with_borrow_mut(|store| {
+        store.slots.clear();
+        store.pending_load_slot = None;
+        store.unlocked_locks.clear();
+        store.collected_keys.clear();
+    });
 }
 
 /// Godot-facing helper for accessing save state from scenes/scripts.
@@ -163,8 +168,9 @@ impl SaveApi {
     /// Clear any pending load flag without removing the saved data itself.
     #[func]
     pub fn clear_pending_load(&self) {
-        let mut store = store().lock().expect("save store poisoned");
-        store.pending_load_slot = None;
+        STORE.with_borrow_mut(|store| {
+            store.pending_load_slot = None;
+        });
     }
 }
 
@@ -172,14 +178,18 @@ impl SaveApi {
 mod tests {
     use super::*;
 
-    #[test]
-    fn save_and_queue_load_in_single_slot() {
-        // Ensure deterministic state for the test
-        {
-            let mut store = store().lock().expect("save store poisoned");
+    fn reset_store() {
+        STORE.with_borrow_mut(|store| {
             store.slots.clear();
             store.pending_load_slot = None;
-        }
+            store.unlocked_locks.clear();
+            store.collected_keys.clear();
+        });
+    }
+
+    #[test]
+    fn save_and_queue_load_in_single_slot() {
+        reset_store();
 
         let slot = DEFAULT_SAVE_SLOT;
         let room = (1, 2);
@@ -202,12 +212,7 @@ mod tests {
 
     #[test]
     fn peek_checkpoint_returns_saved_data_without_consuming() {
-        // Reset store state
-        {
-            let mut store = store().lock().expect("save store poisoned");
-            store.slots.clear();
-            store.pending_load_slot = None;
-        }
+        reset_store();
 
         let slot = DEFAULT_SAVE_SLOT;
         let room = (3, 4);
