@@ -68,7 +68,7 @@ impl Checkpoint {
         }
 
         self.activated = true;
-        godot_print!("Checkpoint activated!");
+        godot_print!("[Checkpoint] activated");
 
         // Immediately switch to checked loop
         self.sprite.set_animation("checked");
@@ -79,7 +79,7 @@ impl Checkpoint {
         let room = (self.room_coords.x, self.room_coords.y);
         let snapshot = save::save_checkpoint(DEFAULT_SAVE_SLOT, room, position);
         godot_print!(
-            "Checkpoint saved to slot {} at room {:?}, position {:?}",
+            "[Checkpoint] saved to slot {} at room {:?}, position {:?}",
             DEFAULT_SAVE_SLOT,
             snapshot.room,
             snapshot.position
@@ -123,7 +123,7 @@ impl Checkpoint {
         self.sprite.set_animation("checked");
         self.sprite.play();
         godot_print!(
-            "Restored checkpoint from slot {} at room {:?}, position {:?}",
+            "[Checkpoint] restored from slot {} at room {:?}, position {:?}",
             DEFAULT_SAVE_SLOT,
             snapshot.room,
             snapshot.position

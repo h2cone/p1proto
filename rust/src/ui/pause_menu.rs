@@ -23,7 +23,7 @@ impl IControl for PauseMenu {
     }
 
     fn ready(&mut self) {
-        godot_print!("PauseMenu ready");
+        godot_print!("[PauseMenu] ready");
 
         // Start hidden
         self.base_mut().set_visible(false);
@@ -76,20 +76,20 @@ impl PauseMenu {
             tree.set_pause(new_state);
         }
 
-        godot_print!("Pause toggled: {}", new_state);
+        godot_print!("[PauseMenu] pause toggled: {}", new_state);
     }
 
     /// Handle resume button press - unpause and hide menu
     #[func]
     fn on_resume_button_pressed(&mut self) {
-        godot_print!("Resume button pressed");
+        godot_print!("[PauseMenu] resume button pressed");
         self.toggle_pause();
     }
 
     /// Handle quit button press - return to main menu
     #[func]
     fn on_quit_button_pressed(&mut self) {
-        godot_print!("Quit to menu button pressed");
+        godot_print!("[PauseMenu] quit to menu button pressed");
 
         // Unpause before changing scene
         if let Some(mut tree) = self.base().get_tree() {

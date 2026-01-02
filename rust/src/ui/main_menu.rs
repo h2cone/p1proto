@@ -27,7 +27,7 @@ impl IControl for MainMenu {
     }
 
     fn ready(&mut self) {
-        godot_print!("MainMenu ready");
+        godot_print!("[MainMenu] ready");
 
         // Locate optional Continue button (Godot wiring handled in Rust)
         self.continue_button = self.find_continue_button();
@@ -69,7 +69,7 @@ impl MainMenu {
     /// Handle play button press - reset state and load the game scene
     #[func]
     fn on_play_button_pressed(&mut self) {
-        godot_print!("Play button pressed");
+        godot_print!("[MainMenu] play button pressed");
 
         // Reset all game state for new game
         save::reset_all();
@@ -85,7 +85,7 @@ impl MainMenu {
     fn on_continue_button_pressed(&mut self) {
         if save::queue_load(DEFAULT_SAVE_SLOT) {
             godot_print!(
-                "Continue button pressed - loading save slot {}",
+                "[MainMenu] continue button pressed - loading save slot {}",
                 DEFAULT_SAVE_SLOT
             );
             if let Some(mut tree) = self.base().get_tree() {
@@ -120,7 +120,7 @@ impl MainMenu {
     /// Handle quit button press - exit the application
     #[func]
     fn on_quit_button_pressed(&mut self) {
-        godot_print!("Quit button pressed");
+        godot_print!("[MainMenu] quit button pressed");
 
         // Quit the application
         if let Some(mut tree) = self.base().get_tree() {

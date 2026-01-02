@@ -27,16 +27,24 @@ impl IStaticBody2D for PlainLock {
     }
 
     fn ready(&mut self) {
+        godot_print!(
+            "[PlainLock] ready at {:?}, room {:?}",
+            self.base().get_global_position(),
+            self.room_coords
+        );
+
         // Check if already unlocked
         let room = (self.room_coords.x, self.room_coords.y);
         let pos = self.base().get_global_position();
         if save::is_lock_unlocked(room, pos) {
+            godot_print!("[PlainLock] already unlocked, queue_free");
             self.base_mut().queue_free();
             return;
         }
 
         let callable = self.base().callable("on_body_entered");
         self.detect_area.connect("body_entered", &callable);
+        godot_print!("[PlainLock] body_entered signal connected");
     }
 }
 
@@ -46,9 +54,29 @@ impl PlainLock {
     fn lock_unlocked();
 
     #[func]
-    fn on_body_entered(&mut self, _body: Gd<Node2D>) {
+    fn on_body_entered(&mut self, body: Gd<Node2D>) {
+        let body_pos = body.get_global_position();
+        let detect_pos = self.detect_area.get_global_position();
+        let distance = body_pos.distance_to(detect_pos);
+
+        // Filter spurious signals from physics engine edge cases during room transitions.
+        const MAX_DETECT_DISTANCE: f32 = 48.0;
+        if distance > MAX_DETECT_DISTANCE {
+            godot_print!(
+                "[PlainLock] on_body_entered IGNORED: body={}, distance={:.1}",
+                body.get_name(),
+                distance
+            );
+            return;
+        }
+
+        godot_print!("[PlainLock] on_body_entered: body={}", body.get_name());
+
         if let Some(mut key) = self.find_collected_key() {
+            godot_print!("[PlainLock] found collected key, unlocking");
             self.unlock(&mut key);
+        } else {
+            godot_print!("[PlainLock] no collected key found, ignoring");
         }
     }
 
@@ -67,7 +95,7 @@ impl PlainLock {
     }
 
     fn unlock(&mut self, key: &mut Gd<PlainKey>) {
-        godot_print!("Lock unlocked!");
+        godot_print!("[PlainLock] unlocked");
 
         // Save unlock state
         let room = (self.room_coords.x, self.room_coords.y);

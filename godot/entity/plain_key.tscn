@@ -19,7 +19,7 @@ animation = &"spin"
 shape = SubResource("RectangleShape2D_2xix4")
 
 [node name="DetectArea" type="Area2D" parent="."]
-collision_layer = 8
+collision_layer = 16
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="DetectArea"]
 shape = SubResource("RectangleShape2D_k738v")

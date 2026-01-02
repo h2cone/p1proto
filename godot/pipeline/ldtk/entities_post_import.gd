@@ -4,7 +4,7 @@
 # Automatically sets up entities during import based on their identifier
 
 # Entities that require room_coords to be set
-const ENTITIES_WITH_ROOM_COORDS := ["checkpoint", "plain_key", "plain_lock"]
+const ENTITIES_WITH_ROOM_COORDS := ["checkpoint", "plain_key", "plain_lock", "portal"]
 
 
 func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
@@ -25,6 +25,8 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 		match entity_key:
 			"moving_platform":
 				setup_moving_platform(entity_layer, entity, entity_counts[entity_key])
+			"portal":
+				setup_portal(entity_layer, entity, entity_counts[entity_key])
 			_:
 				setup_generic_entity(entity_layer, entity, entity_counts[entity_key])
 
@@ -220,3 +222,31 @@ func get_entity_field(entity_data: Variant, field_name: String, default_value: V
 		if entity_data.fields.has(field_name):
 			return entity_data.fields[field_name]
 	return default_value
+
+
+func setup_portal(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
+	"""Set up a Portal entity with destination_room from LDtk fields"""
+	var entity_key := "portal"
+	var scene_path := get_scene_path(entity_key)
+
+	print("Setting up %s" % get_entity_identifier(entity_data))
+
+	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
+	if not instance:
+		return
+
+	# Set room_coords from level name
+	var room_coords: Variant = get_room_coords(entity_layer)
+	if room_coords != null:
+		instance.set("room_coords", room_coords)
+	else:
+		printerr("portal room coords could not be resolved for layer: %s" % entity_layer.name)
+
+	# Read destination_room from LDtk fields (expects "dest_x" and "dest_y" int fields)
+	var dest_x: int = get_entity_field(entity_data, "dest_x", 0)
+	var dest_y: int = get_entity_field(entity_data, "dest_y", 0)
+	instance.set("destination_room", Vector2i(dest_x, dest_y))
+
+	finalize_entity(entity_layer, instance, entity_data, entity_key)
+	print("  - Instantiated %s.tscn" % entity_key)
+	print("  - Configured: destination_room=(%d, %d)" % [dest_x, dest_y])

@@ -13,7 +13,7 @@ impl INode for Game {
     }
 
     fn ready(&mut self) {
-        godot_print!("Game ready")
+        godot_print!("[Game] ready")
     }
 }
 

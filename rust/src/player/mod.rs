@@ -49,7 +49,7 @@ impl ICharacterBody2D for Player {
         self.moving_platform_mask_default =
             self.base().get_collision_mask_value(MOVING_PLATFORM_LAYER);
 
-        godot_print!("Player ready")
+        godot_print!("[Player] ready")
     }
 
     fn physics_process(&mut self, delta: f64) {

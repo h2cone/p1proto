@@ -50,7 +50,7 @@ impl PressurePlate {
             self.pressed = true;
             self.sprite.set_animation("active");
             self.sprite.play();
-            godot_print!("Pressure plate activated!");
+            godot_print!("[PressurePlate] activated");
         }
     }
 
@@ -62,7 +62,7 @@ impl PressurePlate {
             self.pressed = false;
             self.sprite.set_animation("inactive");
             self.sprite.stop();
-            godot_print!("Pressure plate deactivated!");
+            godot_print!("[PressurePlate] deactivated");
         }
     }
 

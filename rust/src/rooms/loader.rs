@@ -48,7 +48,7 @@ impl RoomLoader {
         // Try to load the scene
         match try_load::<PackedScene>(&path) {
             Ok(scene) => {
-                godot_print!("Loaded room scene: {}", path);
+                godot_print!("[RoomLoader] loaded room scene: {}", path);
                 self.scene_cache.insert(room_coords, scene.clone());
                 Some(scene)
             }

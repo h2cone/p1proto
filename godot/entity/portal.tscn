@@ -1,0 +1,26 @@
+[gd_scene load_steps=3 format=3 uid="uid://dgw1ichj4vawt"]
+
+[ext_resource type="SpriteFrames" uid="uid://ccjgqhpc2olg1" path="res://pipeline/aseprite/wizard/portal.res" id="1_kt808"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_kt808"]
+radius = 11.0
+height = 34.0
+
+[node name="Portal" type="Portal"]
+collision_layer = 32
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_kt808")
+animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CapsuleShape2D_kt808")
+
+[node name="HintLabel" type="Label" parent="."]
+visible = false
+offset_left = -19.0
+offset_top = -42.0
+offset_right = 21.0
+offset_bottom = -19.0
+text = "⬆"
+horizontal_alignment = 1
