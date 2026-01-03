@@ -1633,6 +1633,22 @@
 							],
 							"__worldX": 280,
 							"__worldY": 664
+						},
+						{
+							"__identifier": "Pressure_plate",
+							"__grid": [18,27],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#808080",
+							"iid": "b71fe210-d380-11f0-8b76-c56e729dd46a",
+							"width": 20,
+							"height": 16,
+							"defUid": 28,
+							"px": [144,216],
+							"fieldInstances": [],
+							"__worldX": 144,
+							"__worldY": 696
 						}
 					]
 				},
