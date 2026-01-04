@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://ceumbpmm8tkrx"]
+
+[ext_resource type="SpriteFrames" uid="uid://d0vq2hxntx1ev" path="res://pipeline/aseprite/wizard/pushable_crate.res" id="1_w5md5"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_w5md5"]
+size = Vector2(24, 24)
+
+[node name="PushableCrate" type="PushableCrate"]
+collision_layer = 256
+collision_mask = 322
+can_sleep = false
+lock_rotation = true
+freeze = Callable()
+continuous_cd = 1
+contact_monitor = true
+max_contacts_reported = 4
+linear_damp = 5.0
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_w5md5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_w5md5")

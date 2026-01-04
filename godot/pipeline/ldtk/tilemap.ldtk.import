@@ -7,10 +7,10 @@ path="res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn"
 
 [deps]
 
-files=["res://pipeline/ldtk/tilesets/tileset_8px.res", "res://pipeline/ldtk/levels/Room_0_1.scn", "res://pipeline/ldtk/levels/Room_1_1.scn", "res://pipeline/ldtk/levels/Room_2_1.scn", "res://pipeline/ldtk/levels/Room_1_2.scn", "res://pipeline/ldtk/levels/Room_1_0.scn", "res://pipeline/ldtk/levels/Room_0_2.scn", "res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn"]
+files=["res://pipeline/ldtk/tilesets/tileset_8px.res", "res://pipeline/ldtk/levels/Room_0_1.scn", "res://pipeline/ldtk/levels/Room_1_1.scn", "res://pipeline/ldtk/levels/Room_2_1.scn", "res://pipeline/ldtk/levels/Room_1_2.scn", "res://pipeline/ldtk/levels/Room_1_0.scn", "res://pipeline/ldtk/levels/Room_2_2.scn", "res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn"]
 
 source_file="res://pipeline/ldtk/tilemap.ldtk"
-dest_files=["res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn", "res://pipeline/ldtk/tilesets/tileset_8px.res", "res://pipeline/ldtk/levels/Room_0_1.scn", "res://pipeline/ldtk/levels/Room_1_1.scn", "res://pipeline/ldtk/levels/Room_2_1.scn", "res://pipeline/ldtk/levels/Room_1_2.scn", "res://pipeline/ldtk/levels/Room_1_0.scn", "res://pipeline/ldtk/levels/Room_0_2.scn", "res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn"]
+dest_files=["res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn", "res://pipeline/ldtk/tilesets/tileset_8px.res", "res://pipeline/ldtk/levels/Room_0_1.scn", "res://pipeline/ldtk/levels/Room_1_1.scn", "res://pipeline/ldtk/levels/Room_2_1.scn", "res://pipeline/ldtk/levels/Room_1_2.scn", "res://pipeline/ldtk/levels/Room_1_0.scn", "res://pipeline/ldtk/levels/Room_2_2.scn", "res://.godot/imported/tilemap.ldtk-5cbafdcf631eac57761fa036cfc27c58.scn"]
 
 [params]
 

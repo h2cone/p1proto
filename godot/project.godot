@@ -70,6 +70,7 @@ act_up={
 2d_physics/layer_6="portal"
 2d_physics/layer_7="pressure_plate"
 2d_physics/layer_8="checkpoint"
+2d_physics/layer_9="pushable_crate"
 
 [rendering]
 

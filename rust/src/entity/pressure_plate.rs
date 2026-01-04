@@ -57,8 +57,8 @@ impl PressurePlate {
     /// Called when a body exits the pressure plate area
     #[func]
     fn on_body_exited(&mut self, _body: Gd<Node2D>) {
-        // Deactivate the plate
-        if self.pressed {
+        // Only deactivate if no bodies remain on the plate
+        if self.pressed && self.base().get_overlapping_bodies().is_empty() {
             self.pressed = false;
             self.sprite.set_animation("inactive");
             self.sprite.stop();
