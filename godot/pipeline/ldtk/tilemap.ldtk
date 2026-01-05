@@ -1671,7 +1671,7 @@
 						},
 						{
 							"__identifier": "Pressure_plate",
-							"__grid": [18,27],
+							"__grid": [20,27],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -1680,9 +1680,9 @@
 							"width": 20,
 							"height": 16,
 							"defUid": 28,
-							"px": [144,216],
+							"px": [160,216],
 							"fieldInstances": [],
-							"__worldX": 784,
+							"__worldX": 800,
 							"__worldY": 696
 						},
 						{

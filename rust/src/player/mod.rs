@@ -15,35 +15,7 @@ const WALK_RIGHT_ACTION: &str = "act_walk_right";
 const JUMP_ACTION: &str = "act_jump";
 const DROP_THROUGH_ACTION: &str = "act_down";
 const DROP_THROUGH_DURATION: f64 = 0.35;
-const PUSH_FORCE: f32 = 80.0;
-const PUSH_INPUT_DEADZONE: f32 = 0.01;
-const PUSH_NORMAL_EPS: f32 = 0.01;
-const PUSH_POSITION_EPS: f32 = 0.01;
-
-fn compute_horizontal_push_impulse(
-    input_axis: f32,
-    collision_normal: Vector2,
-    player_pos: Vector2,
-    body_pos: Vector2,
-    push_force: f32,
-) -> Option<Vector2> {
-    if input_axis.abs() < PUSH_INPUT_DEADZONE {
-        return None;
-    }
-
-    let input_sign = input_axis.signum();
-    let normal_ok =
-        collision_normal.x.abs() > PUSH_NORMAL_EPS && (-collision_normal.x).signum() == input_sign;
-
-    let delta_x = body_pos.x - player_pos.x;
-    let position_ok = delta_x.abs() > PUSH_POSITION_EPS && delta_x.signum() == input_sign;
-
-    if normal_ok || position_ok {
-        Some(Vector2::new(input_sign * push_force, 0.0))
-    } else {
-        None
-    }
-}
+const PUSH_SPEED: f32 = 80.0;
 
 #[derive(GodotClass)]
 #[class(base=CharacterBody2D)]
@@ -169,16 +141,14 @@ impl Player {
         }
     }
 
-    /// Apply impulse to rigid bodies we collided with during move_and_slide
-    /// Based on: https://kidscancode.org/godot_recipes/4.x/physics/character_vs_rigid/
+    /// Push rigid bodies we collided with during move_and_slide
     fn push_rigid_bodies(&mut self) {
         let input = Input::singleton();
-        let input_axis = input.get_axis(WALK_LEFT_ACTION, WALK_RIGHT_ACTION);
-        if input_axis.abs() < PUSH_INPUT_DEADZONE {
+        let input_dir = input.get_axis(WALK_LEFT_ACTION, WALK_RIGHT_ACTION);
+        if input_dir.abs() < 0.01 {
             return;
         }
 
-        let player_pos = self.base().get_global_position();
         let collision_count = self.base().get_slide_collision_count();
         for i in 0..collision_count {
             let Some(collision) = self.base_mut().get_slide_collision(i) else {
@@ -188,17 +158,19 @@ impl Player {
                 continue;
             };
             if let Ok(mut rigid_body) = collider.try_cast::<RigidBody2D>() {
-                let normal = collision.get_normal();
-                let body_pos = rigid_body.get_global_position();
-                let Some(impulse) = compute_horizontal_push_impulse(
-                    input_axis, normal, player_pos, body_pos, PUSH_FORCE,
-                ) else {
-                    continue;
-                };
-                rigid_body
-                    .apply_central_impulse_ex()
-                    .impulse(impulse)
-                    .done();
+                let crate_vel = rigid_body.get_linear_velocity();
+                rigid_body.set_linear_velocity(Vector2::new(input_dir * PUSH_SPEED, crate_vel.y));
+
+                // If crate velocity was near zero despite pushing, it's stuck.
+                // Force move the crate by directly adjusting its position.
+                if crate_vel.x.abs() < 1.0 {
+                    let current_pos = rigid_body.get_global_position();
+                    let push_delta = input_dir.signum() * 0.5;
+                    rigid_body.set_global_position(Vector2::new(
+                        current_pos.x + push_delta,
+                        current_pos.y,
+                    ));
+                }
             }
         }
     }
@@ -244,63 +216,5 @@ impl Player {
             }
         };
         StringName::from(animation_str)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn push_impulse_is_horizontal_and_matches_input() {
-        let input_axis = 1.0;
-        let normal = Vector2::new(-1.0, 0.0);
-        let player_pos = Vector2::new(0.0, 0.0);
-        let body_pos = Vector2::new(10.0, 0.0);
-
-        let impulse =
-            compute_horizontal_push_impulse(input_axis, normal, player_pos, body_pos, PUSH_FORCE)
-                .expect("expected an impulse");
-
-        assert_eq!(impulse, Vector2::new(PUSH_FORCE, 0.0));
-    }
-
-    #[test]
-    fn push_impulse_falls_back_to_position_when_normal_is_vertical() {
-        let input_axis = -1.0;
-        let normal = Vector2::new(0.0, -1.0);
-        let player_pos = Vector2::new(10.0, 0.0);
-        let body_pos = Vector2::new(0.0, 0.0);
-
-        let impulse =
-            compute_horizontal_push_impulse(input_axis, normal, player_pos, body_pos, PUSH_FORCE)
-                .expect("expected an impulse");
-
-        assert_eq!(impulse, Vector2::new(-PUSH_FORCE, 0.0));
-    }
-
-    #[test]
-    fn push_impulse_requires_horizontal_input() {
-        let input_axis = 0.0;
-        let normal = Vector2::new(-1.0, 0.0);
-        let player_pos = Vector2::new(0.0, 0.0);
-        let body_pos = Vector2::new(10.0, 0.0);
-
-        let impulse =
-            compute_horizontal_push_impulse(input_axis, normal, player_pos, body_pos, 1.0);
-        assert!(impulse.is_none());
-    }
-
-    #[test]
-    fn push_impulse_does_not_push_bodies_behind_player() {
-        let input_axis = 1.0;
-        let normal = Vector2::new(0.0, -1.0);
-        let player_pos = Vector2::new(10.0, 0.0);
-        let body_pos = Vector2::new(0.0, 0.0);
-
-        let impulse =
-            compute_horizontal_push_impulse(input_axis, normal, player_pos, body_pos, PUSH_FORCE);
-
-        assert!(impulse.is_none());
     }
 }

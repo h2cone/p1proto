@@ -7,37 +7,12 @@ use godot::prelude::*;
 pub struct PushableCrate {
     #[base]
     base: Base<RigidBody2D>,
-
-    /// Maximum horizontal push speed.
-    #[export]
-    max_push_speed: f32,
 }
 
 #[godot_api]
 impl IRigidBody2D for PushableCrate {
     fn init(base: Base<RigidBody2D>) -> Self {
-        Self {
-            base,
-            max_push_speed: 50.0,
-        }
-    }
-
-    fn ready(&mut self) {
-        godot_print!(
-            "[PushableCrate] ready at {:?}",
-            self.base().get_global_position()
-        );
-    }
-
-    fn physics_process(&mut self, _delta: f64) {
-        let velocity = self.base().get_linear_velocity();
-
-        // Only clamp if velocity exceeds the limit (avoid interfering with physics)
-        if velocity.x.abs() > self.max_push_speed {
-            let clamped_x = velocity.x.clamp(-self.max_push_speed, self.max_push_speed);
-            let new_velocity = Vector2::new(clamped_x, velocity.y);
-            self.base_mut().set_linear_velocity(new_velocity);
-        }
+        Self { base }
     }
 }
 
