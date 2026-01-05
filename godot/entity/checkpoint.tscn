@@ -6,7 +6,8 @@
 size = Vector2(10, 28)
 
 [node name="Checkpoint" type="Checkpoint"]
-collision_layer = 128
+collision_layer = 256
+collision_mask = 2
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = ExtResource("1_vye1w")

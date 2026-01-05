@@ -6,8 +6,8 @@
 size = Vector2(20, 6)
 
 [node name="PressurePlate" type="PressurePlate"]
-collision_layer = 64
-collision_mask = 257
+collision_layer = 128
+collision_mask = 514
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = ExtResource("1_okruh")

@@ -62,15 +62,16 @@ act_up={
 
 [layer_names]
 
-2d_physics/layer_1="player"
-2d_physics/layer_2="tile"
-2d_physics/layer_3="moving_platform"
-2d_physics/layer_4="plain_lock"
-2d_physics/layer_5="plain_key"
-2d_physics/layer_6="portal"
-2d_physics/layer_7="pressure_plate"
-2d_physics/layer_8="checkpoint"
-2d_physics/layer_9="pushable_crate"
+2d_physics/layer_1="world"
+2d_physics/layer_2="player"
+2d_physics/layer_3="tile"
+2d_physics/layer_4="moving_platform"
+2d_physics/layer_5="plain_lock"
+2d_physics/layer_6="plain_key"
+2d_physics/layer_7="portal"
+2d_physics/layer_8="pressure_plate"
+2d_physics/layer_9="checkpoint"
+2d_physics/layer_10="pushable_crate"
 
 [rendering]
 

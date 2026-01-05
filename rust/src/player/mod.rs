@@ -9,7 +9,7 @@ use godot::{
     prelude::*,
 };
 
-const MOVING_PLATFORM_LAYER: i32 = 3;
+const MOVING_PLATFORM_LAYER: i32 = 4;
 const WALK_LEFT_ACTION: &str = "act_walk_left";
 const WALK_RIGHT_ACTION: &str = "act_walk_right";
 const JUMP_ACTION: &str = "act_jump";
