@@ -1,6 +1,8 @@
 use godot::classes::{AnimatedSprite2D, Area2D, IArea2D};
 use godot::prelude::*;
 
+use super::switch_door::SwitchDoor;
+
 #[derive(GodotClass)]
 #[class(base=Area2D)]
 pub struct PressurePlate {
@@ -12,6 +14,14 @@ pub struct PressurePlate {
 
     /// AnimatedSprite2D node reference
     sprite: OnReady<Gd<AnimatedSprite2D>>,
+
+    /// Room coordinates of the target SwitchDoor
+    #[export]
+    target_room: Vector2i,
+
+    /// NodePath to the target SwitchDoor
+    #[export]
+    target_id: NodePath,
 }
 
 #[godot_api]
@@ -21,6 +31,8 @@ impl IArea2D for PressurePlate {
             base,
             pressed: false,
             sprite: OnReady::from_node("AnimatedSprite2D"),
+            target_room: Vector2i::default(),
+            target_id: NodePath::default(),
         }
     }
 
@@ -51,18 +63,35 @@ impl PressurePlate {
             self.sprite.set_animation("active");
             self.sprite.play();
             godot_print!("[PressurePlate] activated");
+
+            // Open target door
+            if let Some(mut door) = self.get_target_door() {
+                door.bind_mut().open();
+            }
         }
     }
 
     /// Called when a body exits the pressure plate area
     #[func]
     fn on_body_exited(&mut self, _body: Gd<Node2D>) {
+        // Defer the check to ensure physics state is fully updated
+        self.base_mut().call_deferred("check_deactivation", &[]);
+    }
+
+    /// Check if pressure plate should deactivate (called deferred)
+    #[func]
+    fn check_deactivation(&mut self) {
         // Only deactivate if no bodies remain on the plate
         if self.pressed && self.base().get_overlapping_bodies().is_empty() {
             self.pressed = false;
             self.sprite.set_animation("inactive");
             self.sprite.stop();
             godot_print!("[PressurePlate] deactivated");
+
+            // Close target door
+            if let Some(mut door) = self.get_target_door() {
+                door.bind_mut().close();
+            }
         }
     }
 
@@ -70,5 +99,14 @@ impl PressurePlate {
     #[func]
     pub fn is_pressed(&self) -> bool {
         self.pressed
+    }
+
+    /// Get the target SwitchDoor if configured
+    fn get_target_door(&self) -> Option<Gd<SwitchDoor>> {
+        if self.target_id.is_empty() {
+            return None;
+        }
+
+        self.base().try_get_node_as::<SwitchDoor>(&self.target_id)
     }
 }

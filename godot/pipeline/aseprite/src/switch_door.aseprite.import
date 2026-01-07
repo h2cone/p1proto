@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://38liyvf637tq"
+path="res://.godot/imported/switch_door.aseprite-29f645fa94faf99f2e8963601152cc18.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/src/switch_door.aseprite"
+dest_files=["res://.godot/imported/switch_door.aseprite-29f645fa94faf99f2e8963601152cc18.res"]
+
+[params]
+

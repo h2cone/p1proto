@@ -3,8 +3,11 @@
 # Entity Post-Import Script for LDtk Importer
 # Automatically sets up entities during import based on their identifier
 
-# Entities that require room_coords to be set
-const ENTITIES_WITH_ROOM_COORDS := ["checkpoint", "plain_key", "plain_lock", "portal"]
+# Entities that require room_coords to be set (use LDtk identifier in PascalCase)
+const ENTITIES_WITH_ROOM_COORDS := ["Checkpoint", "PlainKey", "PlainLock", "Portal", "SwitchDoor"]
+
+# Entities that use IID-based naming (EntityIdentifier_IID8)
+const ENTITIES_WITH_IID_NAME := ["SwitchDoor"]
 
 
 func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
@@ -27,6 +30,8 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 				setup_moving_platform(entity_layer, entity, entity_counts[entity_key])
 			"portal":
 				setup_portal(entity_layer, entity, entity_counts[entity_key])
+			"pressure_plate":
+				setup_pressure_plate(entity_layer, entity, entity_counts[entity_key])
 			_:
 				setup_generic_entity(entity_layer, entity, entity_counts[entity_key])
 
@@ -34,8 +39,24 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 
 
 func get_entity_key(entity_data: Variant) -> String:
-	"""Get lowercase entity identifier used for scene path lookup"""
-	return get_entity_identifier(entity_data).to_lower()
+	"""Get snake_case entity identifier used for scene path lookup"""
+	return to_snake_case(get_entity_identifier(entity_data))
+
+
+func to_snake_case(text: String) -> String:
+	"""Convert PascalCase or camelCase to snake_case"""
+	if text.is_empty():
+		return text
+	var result := ""
+	for i in range(text.length()):
+		var c := text[i]
+		if c >= "A" and c <= "Z":
+			if i > 0:
+				result += "_"
+			result += c.to_lower()
+		else:
+			result += c
+	return result
 
 
 func get_scene_path(entity_key: String) -> String:
@@ -45,22 +66,23 @@ func get_scene_path(entity_key: String) -> String:
 
 func setup_generic_entity(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
 	"""Set up a generic entity without custom LDtk fields"""
+	var entity_id := get_entity_identifier(entity_data)
 	var entity_key := get_entity_key(entity_data)
 	var scene_path := get_scene_path(entity_key)
 
-	print("Setting up %s" % get_entity_identifier(entity_data))
+	print("Setting up %s" % entity_id)
 
 	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
 	if not instance:
 		return
 
 	# Set room_coords for entities that need it
-	if entity_key in ENTITIES_WITH_ROOM_COORDS:
+	if entity_id in ENTITIES_WITH_ROOM_COORDS:
 		var room_coords: Variant = get_room_coords(entity_layer)
 		if room_coords != null:
 			instance.set("room_coords", room_coords)
 		else:
-			printerr("%s room coords could not be resolved for layer: %s" % [entity_key, entity_layer.name])
+			printerr("%s room coords could not be resolved for layer: %s" % [entity_id, entity_layer.name])
 
 	finalize_entity(entity_layer, instance, entity_data, entity_key)
 	print("  - Instantiated %s.tscn" % entity_key)
@@ -112,9 +134,22 @@ func get_entity_iid(entity_data: Variant) -> String:
 
 func build_entity_name(entity_data: Variant, sequence: int) -> String:
 	var base := get_entity_identifier(entity_data)
+	if base in ENTITIES_WITH_IID_NAME:
+		var iid := get_entity_iid(entity_data)
+		var iid_short := iid.left(8) if iid.length() >= 8 else iid
+		return "%s_%s" % [base, iid_short]
 	if sequence > 1:
 		return "%s%d" % [base, sequence]
 	return base
+
+
+func to_pascal_case(text: String) -> String:
+	var parts := text.split("_")
+	var result := ""
+	for part in parts:
+		if part.length() > 0:
+			result += part[0].to_upper() + part.substr(1).to_lower()
+	return result
 
 
 func get_entity_position(entity_data: Variant) -> Vector2:
@@ -250,3 +285,34 @@ func setup_portal(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence:
 	finalize_entity(entity_layer, instance, entity_data, entity_key)
 	print("  - Instantiated %s.tscn" % entity_key)
 	print("  - Configured: destination_room=(%d, %d)" % [dest_x, dest_y])
+
+
+func setup_pressure_plate(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
+	"""Set up a PressurePlate entity with target_room and target_id from LDtk fields"""
+	var entity_key := "pressure_plate"
+	var scene_path := get_scene_path(entity_key)
+
+	print("Setting up %s" % get_entity_identifier(entity_data))
+
+	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
+	if not instance:
+		return
+
+	# Read target_room from LDtk fields
+	var target_room_x: int = get_entity_field(entity_data, "target_room_x", 0)
+	var target_room_y: int = get_entity_field(entity_data, "target_room_y", 0)
+	instance.set("target_room", Vector2i(target_room_x, target_room_y))
+
+	# Read target_id (entity ref IID) and convert to NodePath
+	var target_iid: String = get_entity_field(entity_data, "target_id", "")
+	if target_iid.length() > 0:
+		# SwitchDoor uses IID-based naming: SwitchDoor_{IID8}
+		var iid_short := target_iid.left(8) if target_iid.length() >= 8 else target_iid
+		var target_node_name := "SwitchDoor_%s" % iid_short
+		# Build NodePath relative to entity layer's sibling (same parent level)
+		var target_path := NodePath("../%s" % target_node_name)
+		instance.set("target_id", target_path)
+
+	finalize_entity(entity_layer, instance, entity_data, entity_key)
+	print("  - Instantiated %s.tscn" % entity_key)
+	print("  - Configured: target_room=(%d, %d), target_id=%s" % [target_room_x, target_room_y, target_iid])
