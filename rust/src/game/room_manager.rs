@@ -1,15 +1,14 @@
-use godot::{
-    classes::{CharacterBody2D, PackedScene},
-    prelude::*,
-};
+use godot::classes::CharacterBody2D;
+use godot::prelude::*;
 
+use super::{PlayerSpawner, SpawnResolver, connect_room_portal, find_portal_in_room};
 use crate::rooms::{BoundaryDetector, RoomLoader};
-use crate::save::{self, DEFAULT_SAVE_SLOT, SaveSnapshot};
+use crate::save::SaveService;
 
-/// Initial room grid coordinates (as specified in SPEC.md)
+/// Initial room grid coordinates
 const INITIAL_ROOM: (i32, i32) = (0, 1);
 
-/// Initial player position within the room (as specified in SPEC.md)
+/// Initial player position within the room
 const INITIAL_PLAYER_POS: Vector2 = Vector2::new(64.0, 64.0);
 
 /// Player scene path
@@ -35,17 +34,6 @@ enum SpawnMode {
     AtPortal,
 }
 
-/// Find Portal node in room's Entities layer
-fn find_portal_in_room(room: &Gd<Node2D>) -> Option<Gd<Node2D>> {
-    let entities = room.get_node_or_null(ENTITY_LAYER_NAME)?;
-    for child in entities.get_children().iter_shared() {
-        if child.is_class("Portal") {
-            return Some(child.cast::<Node2D>());
-        }
-    }
-    None
-}
-
 #[derive(GodotClass)]
 #[class(base=Node2D)]
 pub struct RoomManager {
@@ -54,6 +42,12 @@ pub struct RoomManager {
     room_loader: RoomLoader,
     /// Boundary detector for checking room transitions
     boundary_detector: BoundaryDetector,
+    /// Player scene spawner
+    player_spawner: PlayerSpawner,
+    /// Spawn point resolver
+    spawn_resolver: SpawnResolver,
+    /// Save service for entity persistence
+    save_service: Option<Gd<SaveService>>,
     /// Current room grid coordinates
     current_room: (i32, i32),
     /// Current room node in scene tree
@@ -69,6 +63,9 @@ impl INode2D for RoomManager {
             base,
             room_loader: RoomLoader::new(ROOM_SCENE_PATTERN.to_string()),
             boundary_detector: BoundaryDetector::new(TRANSITION_THRESHOLD),
+            player_spawner: PlayerSpawner::new(PLAYER_SCENE_PATH),
+            spawn_resolver: SpawnResolver::new(INITIAL_ROOM, INITIAL_PLAYER_POS),
+            save_service: None,
             current_room: INITIAL_ROOM,
             current_room_node: None,
             player: None,
@@ -78,7 +75,16 @@ impl INode2D for RoomManager {
     fn ready(&mut self) {
         godot_print!("[RoomManager] ready - initializing room transition system");
 
-        let spawn = self.resolve_spawn_point();
+        // Create and add SaveService as child node
+        let save_service = Gd::<SaveService>::from_init_fn(SaveService::init);
+        self.base_mut().add_child(&save_service);
+        self.save_service = Some(save_service);
+        godot_print!("[RoomManager] SaveService created");
+
+        // Resolve spawn point from save or defaults
+        let spawn = self
+            .spawn_resolver
+            .resolve(|room| self.room_loader.room_exists(room));
 
         // Load and spawn target room
         match self.load_and_add_room(spawn.room) {
@@ -87,12 +93,9 @@ impl INode2D for RoomManager {
                 godot_print!("[RoomManager] spawned room at {:?}", spawn.room);
 
                 // Load and spawn player
-                match self.load_player_scene() {
+                match self.player_spawner.spawn() {
                     Some(mut player) => {
-                        // Set spawn position
                         player.set_global_position(spawn.position);
-
-                        // Add player as child of current room
                         room_node.add_child(&player);
                         self.player = Some(player);
                         godot_print!("[RoomManager] spawned player at {:?}", spawn.position);
@@ -107,6 +110,9 @@ impl INode2D for RoomManager {
 
                 // Connect portal signals in the new room
                 self.connect_portal_signals(&room_node);
+
+                // Connect SaveService to entity signals
+                self.connect_save_service(&room_node);
 
                 self.current_room_node = Some(room_node);
             }
@@ -123,61 +129,11 @@ impl INode2D for RoomManager {
 
 #[godot_api]
 impl RoomManager {
-    /// Load a player scene from the player scene file
-    fn load_player_scene(&self) -> Option<Gd<CharacterBody2D>> {
-        match try_load::<PackedScene>(PLAYER_SCENE_PATH) {
-            Ok(scene) => match scene.instantiate() {
-                Some(instance) => match instance.try_cast::<CharacterBody2D>() {
-                    Ok(player) => Some(player),
-                    Err(instance) => {
-                        godot_error!(
-                            "Player scene root is not CharacterBody2D (got {})",
-                            instance.get_class()
-                        );
-                        None
-                    }
-                },
-                None => {
-                    godot_error!("Failed to instantiate player scene");
-                    None
-                }
-            },
-            Err(_) => {
-                godot_error!("Failed to load player scene from {}", PLAYER_SCENE_PATH);
-                None
-            }
-        }
-    }
-
     /// Load a room scene and add it to the RoomManager node
     fn load_and_add_room(&mut self, room_coords: (i32, i32)) -> Option<Gd<Node2D>> {
         let room_node = self.room_loader.instantiate_room(room_coords)?;
         self.base_mut().add_child(&room_node);
         Some(room_node)
-    }
-
-    /// Determine spawn data for the next game session.
-    ///
-    /// Prefers a queued save load (e.g., from "Continue") and falls back to the initial spawn.
-    fn resolve_spawn_point(&mut self) -> SaveSnapshot {
-        if let Some(snapshot) = save::take_pending_load() {
-            if self.room_loader.room_exists(snapshot.room) {
-                godot_print!(
-                    "[RoomManager] loading from save slot {}: room {:?}, position {:?}",
-                    DEFAULT_SAVE_SLOT,
-                    snapshot.room,
-                    snapshot.position
-                );
-                return snapshot;
-            } else {
-                godot_warn!(
-                    "Saved room {:?} no longer exists; falling back to initial spawn",
-                    snapshot.room
-                );
-            }
-        }
-
-        SaveSnapshot::new(INITIAL_ROOM, INITIAL_PLAYER_POS)
     }
 
     /// Check if player should transition to an adjacent room
@@ -254,7 +210,7 @@ impl RoomManager {
                 // 4. Calculate spawn position
                 let spawn_pos = match spawn_mode {
                     SpawnMode::Position(pos) => pos,
-                    SpawnMode::AtPortal => find_portal_in_room(&new_room)
+                    SpawnMode::AtPortal => find_portal_in_room(&new_room, ENTITY_LAYER_NAME)
                         .map(|p| p.get_global_position())
                         .unwrap_or(DEFAULT_SPAWN_POS),
                 };
@@ -265,6 +221,9 @@ impl RoomManager {
 
                 // 6. Connect portal signals
                 self.connect_portal_signals(&new_room);
+
+                // 7. Connect SaveService to entity signals
+                self.connect_save_service(&new_room);
 
                 self.current_room_node = Some(new_room);
 
@@ -284,12 +243,18 @@ impl RoomManager {
 
     /// Connect to portal teleport signals in the given room
     fn connect_portal_signals(&mut self, room: &Gd<Node2D>) {
-        if let Some(portal) = find_portal_in_room(room) {
-            let callable = self.base().callable("on_portal_teleport_requested");
-            portal
-                .upcast::<Node>()
-                .connect("teleport_requested", &callable);
-            godot_print!("[RoomManager] connected portal teleport signal");
+        connect_room_portal(
+            room,
+            ENTITY_LAYER_NAME,
+            &self.base().clone().upcast::<Node>(),
+            "on_portal_teleport_requested",
+        );
+    }
+
+    /// Connect SaveService to entity signals in the given room
+    fn connect_save_service(&mut self, room: &Gd<Node2D>) {
+        if let Some(ref mut service) = self.save_service {
+            service.bind_mut().connect_room_entities(room.clone());
         }
     }
 

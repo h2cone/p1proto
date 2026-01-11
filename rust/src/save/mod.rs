@@ -1,11 +1,13 @@
 //! Save system module.
 //!
-//! Split into two layers:
+//! Split into layers:
 //! - `core`: Generic checkpoint slot management (game-agnostic)
 //! - `entity_state`: Game-specific entity state persistence (keys, locks)
+//! - `service`: Event-driven save handler (Godot node)
 
 mod core;
 mod entity_state;
+mod service;
 
 use godot::prelude::*;
 
@@ -19,6 +21,9 @@ pub use core::{
 pub use entity_state::{
     is_key_collected, is_lock_unlocked, mark_key_collected, mark_lock_unlocked,
 };
+
+// Re-export save service
+pub use service::SaveService;
 
 /// Reset all game state (for new game).
 pub fn reset_all() {

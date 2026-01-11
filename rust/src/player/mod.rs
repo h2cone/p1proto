@@ -1,19 +1,19 @@
+mod animation;
+mod input_adapter;
 mod movement;
 
+pub use animation::AnimationNames;
+pub use input_adapter::InputActions;
 pub use movement::{MovementConfig, MovementInput, MovementState, PlayerMovement};
 
 use godot::{
     classes::{
-        AnimatedSprite2D, CharacterBody2D, CollisionObject2D, ICharacterBody2D, Input, RigidBody2D,
+        AnimatedSprite2D, CharacterBody2D, CollisionObject2D, ICharacterBody2D, RigidBody2D,
     },
     prelude::*,
 };
 
 const MOVING_PLATFORM_LAYER: i32 = 4;
-const WALK_LEFT_ACTION: &str = "act_walk_left";
-const WALK_RIGHT_ACTION: &str = "act_walk_right";
-const JUMP_ACTION: &str = "act_jump";
-const DROP_THROUGH_ACTION: &str = "act_down";
 const DROP_THROUGH_DURATION: f64 = 0.35;
 const PUSH_SPEED: f32 = 80.0;
 
@@ -23,6 +23,8 @@ pub struct Player {
     base: Base<CharacterBody2D>,
     movement: Option<PlayerMovement>,
     sprite: OnReady<Gd<AnimatedSprite2D>>,
+    input_actions: InputActions,
+    animation_names: AnimationNames,
     drop_through_timer: f64,
     moving_platform_mask_default: bool,
 }
@@ -34,6 +36,8 @@ impl ICharacterBody2D for Player {
             base,
             movement: None,
             sprite: OnReady::from_node("AnimatedSprite2D"),
+            input_actions: InputActions::default(),
+            animation_names: AnimationNames::default(),
             drop_through_timer: 0.0,
             moving_platform_mask_default: true,
         }
@@ -65,14 +69,10 @@ impl ICharacterBody2D for Player {
             is_on_floor = false;
         }
 
-        // Collect input
-        let input_singleton = Input::singleton();
-        let movement_input = MovementInput {
-            direction: input_singleton.get_axis(WALK_LEFT_ACTION, WALK_RIGHT_ACTION),
-            jump_just_pressed: input_singleton.is_action_just_pressed(JUMP_ACTION),
-        };
+        // 1. Collect input (using input_adapter module)
+        let movement_input = input_adapter::collect_movement_input(&self.input_actions);
 
-        // Process movement and get new velocity and state
+        // 2. Process movement and get new velocity and state
         let (new_velocity, state) = if let Some(movement) = &mut self.movement {
             let new_velocity =
                 movement.physics_process(velocity, is_on_floor, delta, movement_input);
@@ -81,26 +81,35 @@ impl ICharacterBody2D for Player {
             return;
         };
 
-        // Update physics
+        // 3. Update physics
         self.base_mut().set_velocity(new_velocity);
         self.base_mut().move_and_slide();
 
-        // Push rigid bodies (e.g., pushable crates)
+        // 4. Push rigid bodies (e.g., pushable crates)
         self.push_rigid_bodies();
 
-        // Update sprite direction and animation
-        self.update_sprite_and_animation(new_velocity, state);
+        // 5. Update animation (using animation module)
+        let is_walking = self
+            .movement
+            .as_ref()
+            .map(|m| m.is_walking(new_velocity))
+            .unwrap_or(false);
+        animation::update_sprite_direction(&mut self.sprite, new_velocity.x);
+        let anim =
+            animation::get_animation_name(state, new_velocity, is_walking, &self.animation_names);
+        animation::play_animation_if_changed(&mut self.sprite, anim);
     }
 }
 
 #[godot_api]
 impl Player {
     fn update_drop_through(&mut self, is_on_floor: bool, delta: f64) {
-        if is_on_floor && self.drop_through_timer <= 0.0 && self.is_standing_on_moving_platform() {
-            let input = Input::singleton();
-            if input.is_action_just_pressed(DROP_THROUGH_ACTION) {
-                self.start_drop_through();
-            }
+        if is_on_floor
+            && self.drop_through_timer <= 0.0
+            && self.is_standing_on_moving_platform()
+            && input_adapter::is_drop_through_pressed(&self.input_actions)
+        {
+            self.start_drop_through();
         }
 
         if self.drop_through_timer > 0.0 {
@@ -148,8 +157,7 @@ impl Player {
 
     /// Push rigid bodies we collided with during move_and_slide
     fn push_rigid_bodies(&mut self) {
-        let input = Input::singleton();
-        let input_dir = input.get_axis(WALK_LEFT_ACTION, WALK_RIGHT_ACTION);
+        let input_dir = input_adapter::get_push_direction(&self.input_actions);
         if input_dir.abs() < 0.01 {
             return;
         }
@@ -178,48 +186,5 @@ impl Player {
                 }
             }
         }
-    }
-
-    /// Update sprite direction based on velocity and play appropriate animation
-    fn update_sprite_and_animation(&mut self, velocity: Vector2, state: MovementState) {
-        // Get the appropriate animation for current state before mutably borrowing sprite
-        let animation = self.get_animation_name(velocity, state);
-
-        // Flip sprite based on horizontal velocity
-        if !velocity.x.is_zero_approx() {
-            self.sprite
-                .set_scale(Vector2::new(velocity.x.signum(), 1.0));
-        }
-
-        // Play animation if it's different from current one
-        if !animation.is_empty() && animation != self.sprite.get_animation() {
-            self.sprite.set_animation(&animation);
-            self.sprite.play();
-        }
-    }
-
-    /// Determine which animation to play based on state and velocity
-    fn get_animation_name(&self, velocity: Vector2, state: MovementState) -> StringName {
-        let animation_str = match state {
-            MovementState::Floor => {
-                if let Some(movement) = &self.movement {
-                    if movement.is_walking(velocity) {
-                        "walk"
-                    } else {
-                        "idle"
-                    }
-                } else {
-                    "idle"
-                }
-            }
-            MovementState::Air => {
-                if velocity.y > 0.0 {
-                    "fall"
-                } else {
-                    "jump"
-                }
-            }
-        };
-        StringName::from(animation_str)
     }
 }

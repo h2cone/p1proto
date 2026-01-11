@@ -33,7 +33,7 @@ impl IStaticBody2D for PlainLock {
             self.room_coords
         );
 
-        // Check if already unlocked
+        // Check if already unlocked (query save state for restoration)
         let room = (self.room_coords.x, self.room_coords.y);
         let pos = self.base().get_global_position();
         if save::is_lock_unlocked(room, pos) {
@@ -50,8 +50,10 @@ impl IStaticBody2D for PlainLock {
 
 #[godot_api]
 impl PlainLock {
+    /// Signal emitted when lock is unlocked.
+    /// Parameters: room_coords (Vector2i), position (Vector2)
     #[signal]
-    fn lock_unlocked();
+    fn lock_unlocked(room_coords: Vector2i, position: Vector2);
 
     #[func]
     fn on_body_entered(&mut self, body: Gd<Node2D>) {
@@ -97,12 +99,13 @@ impl PlainLock {
     fn unlock(&mut self, key: &mut Gd<PlainKey>) {
         godot_print!("[PlainLock] unlocked");
 
-        // Save unlock state
-        let room = (self.room_coords.x, self.room_coords.y);
+        // Copy values before emitting signal to avoid borrow conflict
+        let room_coords = self.room_coords;
         let pos = self.base().get_global_position();
-        save::mark_lock_unlocked(room, pos);
 
-        self.signals().lock_unlocked().emit();
+        // Emit signal for SaveService to handle persistence
+        self.signals().lock_unlocked().emit(room_coords, pos);
+
         key.bind_mut().consume();
         self.base_mut().queue_free();
     }

@@ -50,7 +50,7 @@ impl IArea2D for PlainKey {
             self.room_coords
         );
 
-        // Check if already collected
+        // Check if already collected (query save state for restoration)
         let room = (self.room_coords.x, self.room_coords.y);
         if save::is_key_collected(room, self.original_position) {
             godot_print!("[PlainKey] already collected, queue_free");
@@ -91,8 +91,10 @@ impl IArea2D for PlainKey {
 
 #[godot_api]
 impl PlainKey {
+    /// Signal emitted when key is collected.
+    /// Parameters: room_coords (Vector2i), position (Vector2)
     #[signal]
-    fn key_collected();
+    fn key_collected(room_coords: Vector2i, position: Vector2);
 
     #[signal]
     fn key_used();
@@ -114,11 +116,14 @@ impl PlainKey {
             self.base().get_global_position()
         );
 
-        // Save collected state
-        let room = (self.room_coords.x, self.room_coords.y);
-        save::mark_key_collected(room, self.original_position);
+        // Copy values before emitting signal to avoid borrow conflict
+        let room_coords = self.room_coords;
+        let original_position = self.original_position;
 
-        self.signals().key_collected().emit();
+        // Emit signal for SaveService to handle persistence
+        self.signals()
+            .key_collected()
+            .emit(room_coords, original_position);
 
         self.base_mut()
             .set_deferred("monitoring", &false.to_variant());

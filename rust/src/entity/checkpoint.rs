@@ -50,6 +50,11 @@ impl IArea2D for Checkpoint {
 
 #[godot_api]
 impl Checkpoint {
+    /// Signal emitted when checkpoint is activated.
+    /// Parameters: room_coords (Vector2i), position (Vector2)
+    #[signal]
+    fn checkpoint_activated(room_coords: Vector2i, position: Vector2);
+
     /// Called when a body enters the checkpoint area
     #[func]
     fn on_body_entered(&mut self, _body: Gd<Node2D>) {
@@ -74,16 +79,14 @@ impl Checkpoint {
         self.sprite.set_animation("checked");
         self.sprite.play();
 
-        // Persist checkpoint state using room coords
+        // Copy values before emitting signal to avoid borrow conflict
+        let room_coords = self.room_coords;
         let position = self.base().get_global_position();
-        let room = (self.room_coords.x, self.room_coords.y);
-        let snapshot = save::save_checkpoint(DEFAULT_SAVE_SLOT, room, position);
-        godot_print!(
-            "[Checkpoint] saved to slot {} at room {:?}, position {:?}",
-            DEFAULT_SAVE_SLOT,
-            snapshot.room,
-            snapshot.position
-        );
+
+        // Emit signal for SaveService to handle persistence
+        self.signals()
+            .checkpoint_activated()
+            .emit(room_coords, position);
     }
 
     /// Check if checkpoint has been activated
