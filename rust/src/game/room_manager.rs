@@ -24,6 +24,17 @@ const TRANSITION_THRESHOLD: f32 = 0.5;
 /// Entity layer name in LDtk imported scenes
 const ENTITY_LAYER_NAME: &str = "Entities";
 
+/// Default spawn position when portal is not found
+const DEFAULT_SPAWN_POS: Vector2 = Vector2::new(64.0, 64.0);
+
+/// How to determine the player's spawn position in a new room.
+enum SpawnMode {
+    /// Use a specific position (for boundary transitions).
+    Position(Vector2),
+    /// Spawn at the portal location in the target room.
+    AtPortal,
+}
+
 /// Find Portal node in room's Entities layer
 fn find_portal_in_room(room: &Gd<Node2D>) -> Option<Gd<Node2D>> {
     let entities = room.get_node_or_null(ENTITY_LAYER_NAME)?;
@@ -187,10 +198,10 @@ impl RoomManager {
         if let Some(transition) = check {
             // Validate target room exists before transitioning
             if self.room_loader.room_exists(transition.target_room) {
-                self.perform_room_transition(
+                self.execute_room_transition(
                     &mut player,
                     transition.target_room,
-                    transition.new_position,
+                    SpawnMode::Position(transition.new_position),
                 );
             } else {
                 godot_warn!(
@@ -203,12 +214,20 @@ impl RoomManager {
         self.player = Some(player);
     }
 
-    /// Perform the room transition
-    fn perform_room_transition(
+    /// Unified room transition logic.
+    ///
+    /// Handles both boundary transitions and portal teleports through a common flow:
+    /// 1. Remove player from current room
+    /// 2. Destroy old room
+    /// 3. Load new room
+    /// 4. Calculate spawn position based on SpawnMode
+    /// 5. Add player to new room
+    /// 6. Connect portal signals
+    fn execute_room_transition(
         &mut self,
         player: &mut Gd<CharacterBody2D>,
         target_room: (i32, i32),
-        new_position: Vector2,
+        spawn_mode: SpawnMode,
     ) {
         godot_print!(
             "[RoomManager] transitioning from {:?} to {:?}",
@@ -216,34 +235,43 @@ impl RoomManager {
             target_room
         );
 
-        // Remove player from current room
+        // 1. Remove player from current room
         if let Some(mut parent) = player.get_parent() {
             parent.remove_child(&*player);
         }
 
+        // 2. Destroy old room
         if let Some(mut old_room) = self.current_room_node.take() {
             self.base_mut().remove_child(&old_room);
             old_room.queue_free();
         }
 
-        // Load and add new room
+        // 3. Load new room
         match self.load_and_add_room(target_room) {
             Some(mut new_room) => {
-                // Update current room tracking
                 self.current_room = target_room;
 
-                // Add player to new room and update position
-                new_room.add_child(&*player);
-                player.set_global_position(new_position);
+                // 4. Calculate spawn position
+                let spawn_pos = match spawn_mode {
+                    SpawnMode::Position(pos) => pos,
+                    SpawnMode::AtPortal => find_portal_in_room(&new_room)
+                        .map(|p| p.get_global_position())
+                        .unwrap_or(DEFAULT_SPAWN_POS),
+                };
 
-                // Connect portal signals in the new room
+                // 5. Add player to new room
+                player.set_position(spawn_pos);
+                new_room.add_child(&*player);
+
+                // 6. Connect portal signals
                 self.connect_portal_signals(&new_room);
 
                 self.current_room_node = Some(new_room);
 
                 godot_print!(
-                    "[RoomManager] room transition complete to {:?}",
-                    target_room
+                    "[RoomManager] room transition complete to {:?} at {:?}",
+                    target_room,
+                    spawn_pos
                 );
             }
             None => {
@@ -277,66 +305,12 @@ impl RoomManager {
             return;
         }
 
-        // Perform room transition first (use zero position temporarily)
         let Some(mut player) = self.player.take() else {
             return;
         };
 
-        let old_player_pos = player.get_global_position();
-        godot_print!("[RoomManager] player old position: {:?}", old_player_pos);
-
-        // Remove player from current room
-        if let Some(mut parent) = player.get_parent() {
-            parent.remove_child(&player);
-        }
-        godot_print!("[RoomManager] player removed from old room");
-
-        if let Some(mut old_room) = self.current_room_node.take() {
-            self.base_mut().remove_child(&old_room);
-            old_room.queue_free();
-        }
-        godot_print!("[RoomManager] old room destroyed");
-
-        // Load and add new room
-        godot_print!("[RoomManager] loading new room...");
-        match self.load_and_add_room(target) {
-            Some(mut new_room) => {
-                godot_print!("[RoomManager] new room loaded and added to scene tree");
-                self.current_room = target;
-
-                // Find portal position
-                let spawn_position = find_portal_in_room(&new_room)
-                    .map(|p| p.get_global_position())
-                    .unwrap_or(Vector2::new(64.0, 64.0));
-                godot_print!("[RoomManager] spawn position: {:?}", spawn_position);
-
-                // Set position BEFORE add_child so player appears at correct location
-                player.set_position(spawn_position);
-
-                // Add player to scene tree
-                new_room.add_child(&player);
-                godot_print!(
-                    "[RoomManager] player added at {:?}",
-                    player.get_global_position()
-                );
-                player.set_velocity(Vector2::ZERO);
-
-                // Connect portal signals in the new room
-                self.connect_portal_signals(&new_room);
-
-                self.current_room_node = Some(new_room);
-
-                godot_print!(
-                    "[RoomManager] portal teleport complete to {:?} at {:?}",
-                    target,
-                    spawn_position
-                );
-            }
-            None => {
-                godot_error!("Failed to load target room {:?}", target);
-                self.base_mut().add_child(&player);
-            }
-        }
+        self.execute_room_transition(&mut player, target, SpawnMode::AtPortal);
+        player.set_velocity(Vector2::ZERO);
 
         self.player = Some(player);
     }

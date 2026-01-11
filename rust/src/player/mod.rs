@@ -1,6 +1,6 @@
 mod movement;
 
-pub use movement::{MovementConfig, MovementState, PlayerMovement};
+pub use movement::{MovementConfig, MovementInput, MovementState, PlayerMovement};
 
 use godot::{
     classes::{
@@ -45,9 +45,6 @@ impl ICharacterBody2D for Player {
             accel_speed: 720.0,
             jump_velocity: -300.0,
             min_walk_speed: 0.1,
-            action_walk_left: WALK_LEFT_ACTION.to_string(),
-            action_walk_right: WALK_RIGHT_ACTION.to_string(),
-            action_jump: JUMP_ACTION.to_string(),
             ..Default::default()
         };
         self.movement = Some(PlayerMovement::new(config));
@@ -68,9 +65,17 @@ impl ICharacterBody2D for Player {
             is_on_floor = false;
         }
 
+        // Collect input
+        let input_singleton = Input::singleton();
+        let movement_input = MovementInput {
+            direction: input_singleton.get_axis(WALK_LEFT_ACTION, WALK_RIGHT_ACTION),
+            jump_just_pressed: input_singleton.is_action_just_pressed(JUMP_ACTION),
+        };
+
         // Process movement and get new velocity and state
         let (new_velocity, state) = if let Some(movement) = &mut self.movement {
-            let new_velocity = movement.physics_process(velocity, is_on_floor, delta);
+            let new_velocity =
+                movement.physics_process(velocity, is_on_floor, delta, movement_input);
             (new_velocity, movement.state)
         } else {
             return;

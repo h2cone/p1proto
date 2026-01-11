@@ -1,137 +1,29 @@
+//! Save system module.
+//!
+//! Split into two layers:
+//! - `core`: Generic checkpoint slot management (game-agnostic)
+//! - `entity_state`: Game-specific entity state persistence (keys, locks)
+
+mod core;
+mod entity_state;
+
 use godot::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashSet;
 
-/// Default save slot index. Designed for easy expansion to multiple slots later.
-pub const DEFAULT_SAVE_SLOT: usize = 0;
+// Re-export core save system
+pub use core::{
+    DEFAULT_SAVE_SLOT, SaveSnapshot, has_save, peek_checkpoint, queue_load, save_checkpoint,
+    take_pending_load,
+};
 
-/// Snapshot of player progress for a single save slot.
-#[derive(Copy, Clone, Debug)]
-pub struct SaveSnapshot {
-    pub room: (i32, i32),
-    pub position: Vector2,
-}
+// Re-export entity state management
+pub use entity_state::{
+    is_key_collected, is_lock_unlocked, mark_key_collected, mark_lock_unlocked,
+};
 
-impl SaveSnapshot {
-    pub fn new(room: (i32, i32), position: Vector2) -> Self {
-        Self { room, position }
-    }
-}
-
-/// Unique identifier for an entity (room_x, room_y, pos_x, pos_y)
-type EntityId = (i32, i32, i32, i32);
-
-#[derive(Default)]
-struct SaveStore {
-    slots: Vec<Option<SaveSnapshot>>,
-    /// Which slot should be loaded on the next game start.
-    pending_load_slot: Option<usize>,
-    /// Set of unlocked locks (identified by room coords + position)
-    unlocked_locks: HashSet<EntityId>,
-    /// Set of collected keys (identified by room coords + position)
-    collected_keys: HashSet<EntityId>,
-}
-
-impl SaveStore {
-    fn ensure_slot(&mut self, slot: usize) {
-        if self.slots.len() <= slot {
-            self.slots.resize(slot + 1, None);
-        }
-    }
-}
-
-thread_local! {
-    static STORE: RefCell<SaveStore> = RefCell::new(SaveStore::default());
-}
-
-/// Save checkpoint data into the specified slot.
-pub fn save_checkpoint(slot: usize, room: (i32, i32), position: Vector2) -> SaveSnapshot {
-    STORE.with_borrow_mut(|store| {
-        store.ensure_slot(slot);
-        let snapshot = SaveSnapshot::new(room, position);
-        store.slots[slot] = Some(snapshot);
-        snapshot
-    })
-}
-
-/// Peek at the saved checkpoint for a slot without consuming it.
-pub fn peek_checkpoint(slot: usize) -> Option<SaveSnapshot> {
-    STORE.with_borrow(|store| store.slots.get(slot).and_then(|&slot_data| slot_data))
-}
-
-/// Check if a slot currently has data.
-pub fn has_save(slot: usize) -> bool {
-    STORE.with_borrow(|store| {
-        store
-            .slots
-            .get(slot)
-            .and_then(|slot_data| slot_data.as_ref())
-            .is_some()
-    })
-}
-
-/// Mark a slot to be loaded on the next game scene load.
-pub fn queue_load(slot: usize) -> bool {
-    STORE.with_borrow_mut(|store| {
-        store.ensure_slot(slot);
-        if store.slots[slot].is_some() {
-            store.pending_load_slot = Some(slot);
-            true
-        } else {
-            false
-        }
-    })
-}
-
-/// Consume the pending load request, returning the snapshot if present.
-pub fn take_pending_load() -> Option<SaveSnapshot> {
-    STORE.with_borrow_mut(|store| {
-        let slot = store.pending_load_slot.take()?;
-        store.ensure_slot(slot);
-        store.slots.get(slot).and_then(|&slot_data| slot_data)
-    })
-}
-
-/// Mark a lock as unlocked (persists across room transitions)
-pub fn mark_lock_unlocked(room: (i32, i32), position: Vector2) {
-    STORE.with_borrow_mut(|store| {
-        let id = (room.0, room.1, position.x as i32, position.y as i32);
-        store.unlocked_locks.insert(id);
-    });
-}
-
-/// Check if a lock has been unlocked
-pub fn is_lock_unlocked(room: (i32, i32), position: Vector2) -> bool {
-    STORE.with_borrow(|store| {
-        let id = (room.0, room.1, position.x as i32, position.y as i32);
-        store.unlocked_locks.contains(&id)
-    })
-}
-
-/// Mark a key as collected (persists across room transitions)
-pub fn mark_key_collected(room: (i32, i32), position: Vector2) {
-    STORE.with_borrow_mut(|store| {
-        let id = (room.0, room.1, position.x as i32, position.y as i32);
-        store.collected_keys.insert(id);
-    });
-}
-
-/// Check if a key has been collected
-pub fn is_key_collected(room: (i32, i32), position: Vector2) -> bool {
-    STORE.with_borrow(|store| {
-        let id = (room.0, room.1, position.x as i32, position.y as i32);
-        store.collected_keys.contains(&id)
-    })
-}
-
-/// Reset all game state (for new game)
+/// Reset all game state (for new game).
 pub fn reset_all() {
-    STORE.with_borrow_mut(|store| {
-        store.slots.clear();
-        store.pending_load_slot = None;
-        store.unlocked_locks.clear();
-        store.collected_keys.clear();
-    });
+    core::reset();
+    entity_state::reset();
 }
 
 /// Godot-facing helper for accessing save state from scenes/scripts.
@@ -168,9 +60,7 @@ impl SaveApi {
     /// Clear any pending load flag without removing the saved data itself.
     #[func]
     pub fn clear_pending_load(&self) {
-        STORE.with_borrow_mut(|store| {
-            store.pending_load_slot = None;
-        });
+        core::clear_pending_load();
     }
 }
 
@@ -178,61 +68,24 @@ impl SaveApi {
 mod tests {
     use super::*;
 
-    fn reset_store() {
-        STORE.with_borrow_mut(|store| {
-            store.slots.clear();
-            store.pending_load_slot = None;
-            store.unlocked_locks.clear();
-            store.collected_keys.clear();
-        });
-    }
-
     #[test]
-    fn save_and_queue_load_in_single_slot() {
-        reset_store();
+    fn reset_all_clears_everything() {
+        // Save a checkpoint
+        save_checkpoint(DEFAULT_SAVE_SLOT, (1, 2), Vector2::new(10.0, 20.0));
+        assert!(has_save(DEFAULT_SAVE_SLOT));
 
-        let slot = DEFAULT_SAVE_SLOT;
-        let room = (1, 2);
-        let position = Vector2::new(10.0, 20.0);
+        // Mark some entity states
+        mark_key_collected((1, 2), Vector2::new(30.0, 40.0));
+        mark_lock_unlocked((1, 2), Vector2::new(50.0, 60.0));
+        assert!(is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
+        assert!(is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
 
-        assert!(!has_save(slot));
-        let saved = save_checkpoint(slot, room, position);
-        assert_eq!(saved.room, room);
-        assert_eq!(saved.position, position);
-        assert!(has_save(slot));
+        // Reset everything
+        reset_all();
 
-        assert!(queue_load(slot));
-        let pending = take_pending_load().expect("pending load should exist");
-        assert_eq!(pending.room, room);
-        assert_eq!(pending.position, position);
-
-        // Pending flag is consumed after take_pending_load
-        assert!(take_pending_load().is_none());
-    }
-
-    #[test]
-    fn peek_checkpoint_returns_saved_data_without_consuming() {
-        reset_store();
-
-        let slot = DEFAULT_SAVE_SLOT;
-        let room = (3, 4);
-        let position = Vector2::new(5.0, 6.0);
-
-        assert!(peek_checkpoint(slot).is_none());
-
-        let saved = save_checkpoint(slot, room, position);
-        let peeked = peek_checkpoint(slot).expect("expected saved checkpoint");
-        assert_eq!(peeked.room, saved.room);
-        assert_eq!(peeked.position, saved.position);
-
-        // Ensure data remains after peeking
-        assert!(peek_checkpoint(slot).is_some());
-
-        // Queue and take pending load should not clear saved checkpoint
-        assert!(queue_load(slot));
-        assert!(take_pending_load().is_some());
-        let still_saved = peek_checkpoint(slot).expect("checkpoint should persist after load");
-        assert_eq!(still_saved.room, room);
-        assert_eq!(still_saved.position, position);
+        // Verify all state is cleared
+        assert!(!has_save(DEFAULT_SAVE_SLOT));
+        assert!(!is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
+        assert!(!is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
     }
 }
