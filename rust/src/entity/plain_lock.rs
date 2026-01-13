@@ -56,24 +56,7 @@ impl PlainLock {
     fn lock_unlocked(room_coords: Vector2i, position: Vector2);
 
     #[func]
-    fn on_body_entered(&mut self, body: Gd<Node2D>) {
-        let body_pos = body.get_global_position();
-        let detect_pos = self.detect_area.get_global_position();
-        let distance = body_pos.distance_to(detect_pos);
-
-        // Filter spurious signals from physics engine edge cases during room transitions.
-        const MAX_DETECT_DISTANCE: f32 = 48.0;
-        if distance > MAX_DETECT_DISTANCE {
-            godot_print!(
-                "[PlainLock] on_body_entered IGNORED: body={}, distance={:.1}",
-                body.get_name(),
-                distance
-            );
-            return;
-        }
-
-        godot_print!("[PlainLock] on_body_entered: body={}", body.get_name());
-
+    fn on_body_entered(&mut self, _body: Gd<Node2D>) {
         if let Some(mut key) = self.find_collected_key() {
             godot_print!("[PlainLock] found collected key, unlocking");
             self.unlock(&mut key);

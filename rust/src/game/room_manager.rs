@@ -34,6 +34,12 @@ enum SpawnMode {
     AtPortal,
 }
 
+struct CollisionRestore {
+    layer: u32,
+    mask: u32,
+    frames_remaining: u8,
+}
+
 #[derive(GodotClass)]
 #[class(base=Node2D)]
 pub struct RoomManager {
@@ -54,6 +60,8 @@ pub struct RoomManager {
     current_room_node: Option<Gd<Node2D>>,
     /// Player character node
     player: Option<Gd<CharacterBody2D>>,
+    /// Restore player collision after room transitions
+    pending_player_collision_restore: Option<CollisionRestore>,
 }
 
 #[godot_api]
@@ -69,6 +77,7 @@ impl INode2D for RoomManager {
             current_room: INITIAL_ROOM,
             current_room_node: None,
             player: None,
+            pending_player_collision_restore: None,
         }
     }
 
@@ -123,6 +132,7 @@ impl INode2D for RoomManager {
     }
 
     fn physics_process(&mut self, _delta: f64) {
+        self.tick_player_collision_restore();
         self.check_room_transitions();
     }
 }
@@ -195,6 +205,8 @@ impl RoomManager {
         if let Some(mut parent) = player.get_parent() {
             parent.remove_child(&*player);
         }
+
+        self.disable_player_collision_for_transition(player);
 
         // 2. Destroy old room
         if let Some(mut old_room) = self.current_room_node.take() {
@@ -278,5 +290,41 @@ impl RoomManager {
         player.set_velocity(Vector2::ZERO);
 
         self.player = Some(player);
+    }
+
+    fn disable_player_collision_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
+        if let Some(state) = &mut self.pending_player_collision_restore {
+            state.frames_remaining = 1;
+            return;
+        }
+
+        let layer = player.get_collision_layer();
+        let mask = player.get_collision_mask();
+        player.set_collision_layer(0);
+        player.set_collision_mask(0);
+        self.pending_player_collision_restore = Some(CollisionRestore {
+            layer,
+            mask,
+            frames_remaining: 1,
+        });
+    }
+
+    fn tick_player_collision_restore(&mut self) {
+        let Some(state) = &mut self.pending_player_collision_restore else {
+            return;
+        };
+
+        if state.frames_remaining > 0 {
+            state.frames_remaining -= 1;
+            return;
+        }
+
+        let Some(player) = self.player.as_mut() else {
+            return;
+        };
+
+        player.set_collision_layer(state.layer);
+        player.set_collision_mask(state.mask);
+        self.pending_player_collision_restore = None;
     }
 }
