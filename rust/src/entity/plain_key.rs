@@ -5,6 +5,8 @@ use crate::save;
 
 /// Offset position for the key when following the player (above head)
 const FOLLOW_OFFSET: Vector2 = Vector2::new(0.0, -20.0);
+/// Ignore spurious body_entered signals when the body is far away.
+const MAX_COLLECT_DISTANCE: f32 = 48.0;
 
 #[derive(GodotClass)]
 #[class(base=Area2D)]
@@ -102,6 +104,17 @@ impl PlainKey {
     #[func]
     fn on_body_entered(&mut self, body: Gd<Node2D>) {
         if self.collected {
+            return;
+        }
+        let body_pos = body.get_global_position();
+        let key_pos = self.base().get_global_position();
+        let distance = body_pos.distance_to(key_pos);
+        if distance > MAX_COLLECT_DISTANCE {
+            godot_print!(
+                "[PlainKey] on_body_entered IGNORED: body={}, distance={:.1}",
+                body.get_name(),
+                distance
+            );
             return;
         }
         self.collect(body);
