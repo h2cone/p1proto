@@ -5,10 +5,10 @@ use super::{PlayerSpawner, SpawnResolver, connect_room_portal, find_portal_in_ro
 use crate::rooms::{BoundaryDetector, RoomLoader};
 use crate::save::SaveService;
 
-/// Initial room grid coordinates
+/// Default initial room grid coordinates (can be overridden in Godot).
 const INITIAL_ROOM: (i32, i32) = (0, 1);
 
-/// Initial player position within the room
+/// Default initial player position within the room (can be overridden in Godot).
 const INITIAL_PLAYER_POS: Vector2 = Vector2::new(64.0, 64.0);
 
 /// Player scene path
@@ -44,6 +44,12 @@ struct CollisionRestore {
 #[class(base=Node2D)]
 pub struct RoomManager {
     base: Base<Node2D>,
+    /// Initial room grid coordinates (editable in Godot).
+    #[export]
+    initial_room: Vector2i,
+    /// Initial player position within the room (editable in Godot).
+    #[export]
+    initial_player_pos: Vector2,
     /// Room loader for managing scene loading
     room_loader: RoomLoader,
     /// Boundary detector for checking room transitions
@@ -69,6 +75,8 @@ impl INode2D for RoomManager {
     fn init(base: Base<Node2D>) -> Self {
         Self {
             base,
+            initial_room: Vector2i::new(INITIAL_ROOM.0, INITIAL_ROOM.1),
+            initial_player_pos: INITIAL_PLAYER_POS,
             room_loader: RoomLoader::new(ROOM_SCENE_PATTERN.to_string()),
             boundary_detector: BoundaryDetector::new(TRANSITION_THRESHOLD),
             player_spawner: PlayerSpawner::new(PLAYER_SCENE_PATH),
@@ -89,6 +97,11 @@ impl INode2D for RoomManager {
         self.base_mut().add_child(&save_service);
         self.save_service = Some(save_service);
         godot_print!("[RoomManager] SaveService created");
+
+        // Apply editor overrides for initial room/position before resolving spawn.
+        let initial_room = (self.initial_room.x, self.initial_room.y);
+        let initial_pos = self.initial_player_pos;
+        self.spawn_resolver = SpawnResolver::new(initial_room, initial_pos);
 
         // Resolve spawn point from save or defaults
         let spawn = self
