@@ -1,9 +1,9 @@
-use godot::classes::CharacterBody2D;
+use godot::classes::{CharacterBody2D, Node};
 use godot::prelude::*;
 
 use super::{PlayerSpawner, SpawnResolver, connect_room_portal, find_portal_in_room};
 use crate::rooms::{BoundaryDetector, RoomLoader};
-use crate::save::SaveService;
+use crate::save::{self, DEFAULT_SAVE_SLOT, SaveService};
 
 /// Default initial room grid coordinates (can be overridden in Godot).
 const INITIAL_ROOM: (i32, i32) = (0, 1);
@@ -119,6 +119,7 @@ impl INode2D for RoomManager {
                     Some(mut player) => {
                         player.set_global_position(spawn.position);
                         room_node.add_child(&player);
+                        self.connect_player_signals(&player);
                         self.player = Some(player);
                         godot_print!("[RoomManager] spawned player at {:?}", spawn.position);
                     }
@@ -283,6 +284,15 @@ impl RoomManager {
         }
     }
 
+    fn connect_player_signals(&mut self, player: &Gd<CharacterBody2D>) {
+        let mut player_node = player.clone().upcast::<Node>();
+        let callable = self.base().callable("on_player_death_finished");
+        if !player_node.is_connected("death_finished", &callable) {
+            player_node.connect("death_finished", &callable);
+            godot_print!("[RoomManager] connected player death signal");
+        }
+    }
+
     /// Handle portal teleport request
     #[func]
     fn on_portal_teleport_requested(&mut self, destination_room: Vector2i) {
@@ -303,6 +313,21 @@ impl RoomManager {
         player.set_velocity(Vector2::ZERO);
 
         self.player = Some(player);
+    }
+
+    #[func]
+    fn on_player_death_finished(&mut self) {
+        if save::has_save(DEFAULT_SAVE_SLOT) {
+            let _queued = save::queue_load(DEFAULT_SAVE_SLOT);
+            godot_print!("[RoomManager] player death - respawn at checkpoint");
+        } else {
+            save::reset_all();
+            godot_print!("[RoomManager] player death - restarting");
+        }
+
+        if let Some(mut tree) = self.base().get_tree() {
+            let _result = tree.change_scene_to_file("res://game.tscn");
+        }
     }
 
     fn disable_player_collision_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {

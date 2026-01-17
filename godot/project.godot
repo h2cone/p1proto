@@ -73,6 +73,7 @@ act_up={
 2d_physics/layer_9="checkpoint"
 2d_physics/layer_10="pushable_crate"
 2d_physics/layer_11="switch_door"
+2d_physics/layer_12="hazard"
 
 [rendering]
 
