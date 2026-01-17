@@ -53,7 +53,7 @@ impl Checkpoint {
     /// Signal emitted when checkpoint is activated.
     /// Parameters: room_coords (Vector2i), position (Vector2)
     #[signal]
-    fn checkpoint_activated(room_coords: Vector2i, position: Vector2);
+    pub(crate) fn checkpoint_activated(room_coords: Vector2i, position: Vector2);
 
     /// Called when a body enters the checkpoint area
     #[func]

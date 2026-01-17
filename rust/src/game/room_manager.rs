@@ -1,7 +1,8 @@
-use godot::classes::{CharacterBody2D, Node};
+use godot::classes::CharacterBody2D;
 use godot::prelude::*;
 
 use super::{PlayerSpawner, SpawnResolver, connect_room_portal, find_portal_in_room};
+use crate::player::Player;
 use crate::rooms::{BoundaryDetector, RoomLoader};
 use crate::save::{self, DEFAULT_SAVE_SLOT, SaveService};
 
@@ -197,12 +198,12 @@ impl RoomManager {
     /// Unified room transition logic.
     ///
     /// Handles both boundary transitions and portal teleports through a common flow:
-    /// 1. Remove player from current room
-    /// 2. Destroy old room
-    /// 3. Load new room
-    /// 4. Calculate spawn position based on SpawnMode
-    /// 5. Add player to new room
-    /// 6. Connect portal signals
+    /// - Remove player from current room
+    /// - Destroy old room
+    /// - Load new room
+    /// - Calculate spawn position based on SpawnMode
+    /// - Add player to new room
+    /// - Connect portal signals
     fn execute_room_transition(
         &mut self,
         player: &mut Gd<CharacterBody2D>,
@@ -215,40 +216,40 @@ impl RoomManager {
             target_room
         );
 
-        // 1. Remove player from current room
+        // Remove player from current room
         if let Some(mut parent) = player.get_parent() {
             parent.remove_child(&*player);
         }
 
         self.disable_player_collision_for_transition(player);
 
-        // 2. Destroy old room
+        // Destroy old room
         if let Some(mut old_room) = self.current_room_node.take() {
             self.base_mut().remove_child(&old_room);
             old_room.queue_free();
         }
 
-        // 3. Load new room
+        // Load new room
         match self.load_and_add_room(target_room) {
             Some(mut new_room) => {
                 self.current_room = target_room;
 
-                // 4. Calculate spawn position
+                // Calculate spawn position
                 let spawn_pos = match spawn_mode {
                     SpawnMode::Position(pos) => pos,
                     SpawnMode::AtPortal => find_portal_in_room(&new_room, ENTITY_LAYER_NAME)
-                        .map(|p| p.get_global_position())
+                        .map(|p| p.bind().get_spawn_position())
                         .unwrap_or(DEFAULT_SPAWN_POS),
                 };
 
-                // 5. Add player to new room
+                // Add player to new room
                 player.set_position(spawn_pos);
                 new_room.add_child(&*player);
 
-                // 6. Connect portal signals
+                // Connect portal signals
                 self.connect_portal_signals(&new_room);
 
-                // 7. Connect SaveService to entity signals
+                // Connect SaveService to entity signals
                 self.connect_save_service(&new_room);
 
                 self.current_room_node = Some(new_room);
@@ -269,11 +270,12 @@ impl RoomManager {
 
     /// Connect to portal teleport signals in the given room
     fn connect_portal_signals(&mut self, room: &Gd<Node2D>) {
+        let room_manager = self.to_gd();
         connect_room_portal(
             room,
             ENTITY_LAYER_NAME,
-            &self.base().clone().upcast::<Node>(),
-            "on_portal_teleport_requested",
+            &room_manager,
+            Self::on_portal_teleport_requested,
         );
     }
 
@@ -285,12 +287,17 @@ impl RoomManager {
     }
 
     fn connect_player_signals(&mut self, player: &Gd<CharacterBody2D>) {
-        let mut player_node = player.clone().upcast::<Node>();
-        let callable = self.base().callable("on_player_death_finished");
-        if !player_node.is_connected("death_finished", &callable) {
-            player_node.connect("death_finished", &callable);
-            godot_print!("[RoomManager] connected player death signal");
-        }
+        let Ok(player_script) = player.clone().try_cast::<Player>() else {
+            godot_warn!("[RoomManager] player script not found - death signal not connected");
+            return;
+        };
+
+        let room_manager = self.to_gd();
+        player_script
+            .signals()
+            .death_finished()
+            .connect_other(&room_manager, Self::on_player_death_finished);
+        godot_print!("[RoomManager] connected player death signal");
     }
 
     /// Handle portal teleport request

@@ -47,8 +47,11 @@ impl IStaticBody2D for SwitchDoor {
 
     fn ready(&mut self) {
         // Connect AnimatedSprite2D's animation_finished signal
-        let callable = self.base().callable("on_animation_finished");
-        self.sprite.connect("animation_finished", &callable);
+        let door = self.to_gd();
+        self.sprite
+            .signals()
+            .animation_finished()
+            .connect_other(&door, Self::on_animation_finished);
 
         // Ensure transition animations don't loop
         if let Some(mut frames) = self.sprite.get_sprite_frames() {

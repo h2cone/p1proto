@@ -62,8 +62,11 @@ impl ICharacterBody2D for Player {
         self.moving_platform_mask_default =
             self.base().get_collision_mask_value(MOVING_PLATFORM_LAYER);
 
-        let callable = self.base().callable("on_animation_finished");
-        self.sprite.connect("animation_finished", &callable);
+        let player = self.to_gd();
+        self.sprite
+            .signals()
+            .animation_finished()
+            .connect_other(&player, Self::on_animation_finished);
         if let Some(mut frames) = self.sprite.get_sprite_frames() {
             frames.set_animation_loop(DEATH_ANIMATION, false);
         }
@@ -86,10 +89,10 @@ impl ICharacterBody2D for Player {
             is_on_floor = false;
         }
 
-        // 1. Collect input (using input_adapter module)
+        // Collect input
         let movement_input = input_adapter::collect_movement_input(&self.input_actions);
 
-        // 2. Process movement and get new velocity and state
+        // Process movement and get new velocity and state
         let (new_velocity, state) = if let Some(movement) = &mut self.movement {
             let new_velocity =
                 movement.physics_process(velocity, is_on_floor, delta, movement_input);
@@ -98,7 +101,7 @@ impl ICharacterBody2D for Player {
             return;
         };
 
-        // 3. Update physics
+        // Update physics
         self.base_mut().set_velocity(new_velocity);
         self.base_mut().move_and_slide();
 
@@ -107,10 +110,10 @@ impl ICharacterBody2D for Player {
             return;
         }
 
-        // 4. Push rigid bodies (e.g., pushable crates)
+        // Push rigid bodies
         self.push_rigid_bodies();
 
-        // 5. Update animation (using animation module)
+        // Update animation
         let is_walking = self
             .movement
             .as_ref()
@@ -126,7 +129,7 @@ impl ICharacterBody2D for Player {
 #[godot_api]
 impl Player {
     #[signal]
-    fn death_finished();
+    pub(crate) fn death_finished();
 
     #[func]
     fn on_animation_finished(&mut self) {

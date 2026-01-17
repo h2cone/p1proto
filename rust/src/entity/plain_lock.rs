@@ -42,8 +42,11 @@ impl IStaticBody2D for PlainLock {
             return;
         }
 
-        let callable = self.base().callable("on_body_entered");
-        self.detect_area.connect("body_entered", &callable);
+        let plain_lock = self.to_gd();
+        self.detect_area
+            .signals()
+            .body_entered()
+            .connect_other(&plain_lock, Self::on_body_entered);
         godot_print!("[PlainLock] body_entered signal connected");
     }
 }
@@ -53,7 +56,7 @@ impl PlainLock {
     /// Signal emitted when lock is unlocked.
     /// Parameters: room_coords (Vector2i), position (Vector2)
     #[signal]
-    fn lock_unlocked(room_coords: Vector2i, position: Vector2);
+    pub(crate) fn lock_unlocked(room_coords: Vector2i, position: Vector2);
 
     #[func]
     fn on_body_entered(&mut self, _body: Gd<Node2D>) {

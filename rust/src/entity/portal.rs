@@ -67,7 +67,7 @@ impl IArea2D for Portal {
 impl Portal {
     /// Signal emitted when portal teleport is activated
     #[signal]
-    fn teleport_requested(destination_room: Vector2i);
+    pub(crate) fn teleport_requested(destination_room: Vector2i);
 
     #[func]
     fn on_body_entered(&mut self, _body: Gd<Node2D>) {

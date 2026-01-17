@@ -3,6 +3,8 @@
 
 use godot::prelude::*;
 
+use crate::entity::{checkpoint::Checkpoint, plain_key::PlainKey, plain_lock::PlainLock};
+
 use super::{DEFAULT_SAVE_SLOT, mark_key_collected, mark_lock_unlocked, save_checkpoint};
 
 /// Entity layer name in LDtk imported scenes
@@ -40,33 +42,33 @@ impl SaveService {
 
     /// Try to connect to an entity's save-related signals.
     fn try_connect_entity(&mut self, node: &Gd<Node>) {
-        let base_node = self.base().clone().upcast::<Node>();
+        let save_service = self.to_gd();
 
         // Connect PlainKey signals
-        if node.has_signal("key_collected") {
-            let callable = base_node.callable("on_key_collected");
-            if !node.is_connected("key_collected", &callable) {
-                node.clone().connect("key_collected", &callable);
-                godot_print!("[SaveService] connected to key_collected signal");
-            }
+        if let Ok(key) = node.clone().try_cast::<PlainKey>() {
+            key.signals()
+                .key_collected()
+                .connect_other(&save_service, Self::on_key_collected);
+            godot_print!("[SaveService] connected to key_collected signal");
+            return;
         }
 
         // Connect PlainLock signals
-        if node.has_signal("lock_unlocked") {
-            let callable = base_node.callable("on_lock_unlocked");
-            if !node.is_connected("lock_unlocked", &callable) {
-                node.clone().connect("lock_unlocked", &callable);
-                godot_print!("[SaveService] connected to lock_unlocked signal");
-            }
+        if let Ok(lock) = node.clone().try_cast::<PlainLock>() {
+            lock.signals()
+                .lock_unlocked()
+                .connect_other(&save_service, Self::on_lock_unlocked);
+            godot_print!("[SaveService] connected to lock_unlocked signal");
+            return;
         }
 
         // Connect Checkpoint signals
-        if node.has_signal("checkpoint_activated") {
-            let callable = base_node.callable("on_checkpoint_activated");
-            if !node.is_connected("checkpoint_activated", &callable) {
-                node.clone().connect("checkpoint_activated", &callable);
-                godot_print!("[SaveService] connected to checkpoint_activated signal");
-            }
+        if let Ok(checkpoint) = node.clone().try_cast::<Checkpoint>() {
+            checkpoint
+                .signals()
+                .checkpoint_activated()
+                .connect_other(&save_service, Self::on_checkpoint_activated);
+            godot_print!("[SaveService] connected to checkpoint_activated signal");
         }
     }
 

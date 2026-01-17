@@ -94,10 +94,10 @@ impl PlainKey {
     /// Signal emitted when key is collected.
     /// Parameters: room_coords (Vector2i), position (Vector2)
     #[signal]
-    fn key_collected(room_coords: Vector2i, position: Vector2);
+    pub(crate) fn key_collected(room_coords: Vector2i, position: Vector2);
 
     #[signal]
-    fn key_used();
+    pub(crate) fn key_used();
 
     #[func]
     fn on_body_entered(&mut self, body: Gd<Node2D>) {
