@@ -1,4 +1,5 @@
 pub mod checkpoint;
+pub mod crumbling_platform;
 pub mod moving_platform;
 pub mod plain_key;
 pub mod plain_lock;

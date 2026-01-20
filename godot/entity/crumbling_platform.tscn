@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3 uid="uid://bmjtwnujtioyr"]
+
+[ext_resource type="SpriteFrames" uid="uid://cey1tx1jko42l" path="res://pipeline/aseprite/wizard/crumbling_platform.res" id="1_4w6bx"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4w6bx"]
+size = Vector2(16, 7)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ha77w"]
+size = Vector2(16, 1)
+
+[node name="CrumblingPlatform" type="CrumblingPlatform"]
+collision_layer = 4096
+collision_mask = 0
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("1_4w6bx")
+animation = &"idle"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -7.5)
+shape = SubResource("RectangleShape2D_4w6bx")
+
+[node name="LandingDetector" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LandingDetector"]
+position = Vector2(0, -11.5)
+shape = SubResource("RectangleShape2D_ha77w")

@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://c7ddaygmrd4r4"
+path="res://.godot/imported/crumbling_platform.aseprite-e0509257f4d62bf21fd879726172de5e.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/src/crumbling_platform.aseprite"
+dest_files=["res://.godot/imported/crumbling_platform.aseprite-e0509257f4d62bf21fd879726172de5e.res"]
+
+[params]
+
