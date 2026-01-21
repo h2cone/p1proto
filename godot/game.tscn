@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://bvfi37bgphi6x"]
+[gd_scene load_steps=4 format=3 uid="uid://bvfi37bgphi6x"]
 
 [ext_resource type="PackedScene" uid="uid://bn0g0fos7pnlj" path="res://ui/pause_menu.tscn" id="1_80nbo"]
-[ext_resource type="AudioStream" uid="uid://cx3nkttghf2pf" path="res://pipeline/glicol/bgm.ogg" id="2_e2o6t"]
+[ext_resource type="PackedScene" uid="uid://b6hg4i2wbn3kh" path="res://ui/world_map.tscn" id="2_8krcl"]
+[ext_resource type="AudioStream" uid="uid://cx3nkttghf2pf" path="res://pipeline/glicol/bgm.ogg" id="3_e2o6t"]
 
 [node name="Game" type="Game"]
 
@@ -9,7 +10,9 @@
 
 [node name="PauseMenu" parent="." instance=ExtResource("1_80nbo")]
 
+[node name="WorldMap" parent="." instance=ExtResource("2_8krcl")]
+
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
-stream = ExtResource("2_e2o6t")
+stream = ExtResource("3_e2o6t")
 autoplay = true
 parameters/looping = true

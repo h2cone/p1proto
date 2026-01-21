@@ -113,6 +113,7 @@ impl INode2D for RoomManager {
         match self.load_and_add_room(spawn.room) {
             Some(mut room_node) => {
                 self.current_room = spawn.room;
+                save::mark_room_explored(spawn.room);
                 godot_print!("[RoomManager] spawned room at {:?}", spawn.room);
 
                 // Load and spawn player
@@ -233,6 +234,7 @@ impl RoomManager {
         match self.load_and_add_room(target_room) {
             Some(mut new_room) => {
                 self.current_room = target_room;
+                save::mark_room_explored(target_room);
 
                 // Calculate spawn position
                 let spawn_pos = match spawn_mode {
@@ -335,6 +337,12 @@ impl RoomManager {
         if let Some(mut tree) = self.base().get_tree() {
             let _result = tree.change_scene_to_file("res://game.tscn");
         }
+    }
+
+    /// Expose current room for UI (world map).
+    #[func]
+    fn get_current_room(&self) -> Vector2i {
+        Vector2i::new(self.current_room.0, self.current_room.1)
     }
 
     fn disable_player_collision_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {

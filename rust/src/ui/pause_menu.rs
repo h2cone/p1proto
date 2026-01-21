@@ -41,6 +41,9 @@ impl IControl for PauseMenu {
         let input = godot::classes::Input::singleton();
 
         if input.is_action_just_pressed("ui_esc") {
+            if self.is_world_map_visible() {
+                return;
+            }
             self.toggle_pause();
         }
     }
@@ -77,6 +80,19 @@ impl PauseMenu {
         }
 
         godot_print!("[PauseMenu] pause toggled: {}", new_state);
+    }
+
+    fn is_world_map_visible(&self) -> bool {
+        let Some(parent) = self.base().get_parent() else {
+            return false;
+        };
+        let Some(world_map) = parent.get_node_or_null("WorldMap") else {
+            return false;
+        };
+        let Ok(control) = world_map.try_cast::<Control>() else {
+            return false;
+        };
+        control.is_visible()
     }
 
     /// Handle resume button press - unpause and hide menu

@@ -7,6 +7,7 @@
 
 mod core;
 mod entity_state;
+mod exploration;
 mod service;
 
 use godot::prelude::*;
@@ -22,6 +23,9 @@ pub use entity_state::{
     is_key_collected, is_lock_unlocked, mark_key_collected, mark_lock_unlocked,
 };
 
+// Re-export exploration state
+pub use exploration::{is_room_explored, list_explored_rooms, mark_room_explored};
+
 // Re-export save service
 pub use service::SaveService;
 
@@ -29,6 +33,7 @@ pub use service::SaveService;
 pub fn reset_all() {
     core::reset();
     entity_state::reset();
+    exploration::reset();
 }
 
 /// Godot-facing helper for accessing save state from scenes/scripts.
@@ -67,6 +72,22 @@ impl SaveApi {
     pub fn clear_pending_load(&self) {
         core::clear_pending_load();
     }
+
+    /// Returns explored room coordinates for world map display.
+    #[func]
+    pub fn get_explored_rooms(&self) -> Array<Vector2i> {
+        let mut rooms = Array::new();
+        for (x, y) in list_explored_rooms() {
+            rooms.push(Vector2i::new(x, y));
+        }
+        rooms
+    }
+
+    /// Returns whether a room has been explored.
+    #[func]
+    pub fn is_room_explored(&self, room: Vector2i) -> bool {
+        crate::save::is_room_explored((room.x, room.y))
+    }
 }
 
 #[cfg(test)]
@@ -85,6 +106,10 @@ mod tests {
         assert!(is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
         assert!(is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
 
+        // Mark exploration state
+        mark_room_explored((2, 3));
+        assert!(is_room_explored((2, 3)));
+
         // Reset everything
         reset_all();
 
@@ -92,5 +117,6 @@ mod tests {
         assert!(!has_save(DEFAULT_SAVE_SLOT));
         assert!(!is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
         assert!(!is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
+        assert!(!is_room_explored((2, 3)));
     }
 }
