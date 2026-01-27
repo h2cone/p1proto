@@ -19,6 +19,8 @@ struct EntityStateStore {
     unlocked_locks: HashSet<EntityId>,
     /// Set of collected keys (identified by room coords + position)
     collected_keys: HashSet<EntityId>,
+    /// Set of collected stars (identified by room coords + position)
+    collected_stars: HashSet<EntityId>,
 }
 
 thread_local! {
@@ -57,11 +59,33 @@ pub fn is_key_collected(room: (i32, i32), position: Vector2) -> bool {
     })
 }
 
+/// Mark a star as collected (persists across room transitions).
+pub fn mark_star_collected(room: (i32, i32), position: Vector2) {
+    STORE.with_borrow_mut(|store| {
+        let id = make_entity_id(room, position);
+        store.collected_stars.insert(id);
+    });
+}
+
+/// Check if a star has been collected.
+pub fn is_star_collected(room: (i32, i32), position: Vector2) -> bool {
+    STORE.with_borrow(|store| {
+        let id = make_entity_id(room, position);
+        store.collected_stars.contains(&id)
+    })
+}
+
+/// Get the total number of collected stars.
+pub fn get_star_count() -> usize {
+    STORE.with_borrow(|store| store.collected_stars.len())
+}
+
 /// Reset all entity states (for new game).
 pub fn reset() {
     STORE.with_borrow_mut(|store| {
         store.unlocked_locks.clear();
         store.collected_keys.clear();
+        store.collected_stars.clear();
     });
 }
 

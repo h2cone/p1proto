@@ -3,9 +3,14 @@
 
 use godot::prelude::*;
 
-use crate::entity::{checkpoint::Checkpoint, plain_key::PlainKey, plain_lock::PlainLock};
+use crate::entity::{
+    checkpoint::Checkpoint, collectible_star::CollectibleStar, plain_key::PlainKey,
+    plain_lock::PlainLock,
+};
 
-use super::{DEFAULT_SAVE_SLOT, mark_key_collected, mark_lock_unlocked, save_checkpoint};
+use super::{
+    DEFAULT_SAVE_SLOT, mark_key_collected, mark_lock_unlocked, mark_star_collected, save_checkpoint,
+};
 
 /// Entity layer name in LDtk imported scenes
 const ENTITY_LAYER_NAME: &str = "Entities";
@@ -69,6 +74,15 @@ impl SaveService {
                 .checkpoint_activated()
                 .connect_other(&save_service, Self::on_checkpoint_activated);
             godot_print!("[SaveService] connected to checkpoint_activated signal");
+            return;
+        }
+
+        // Connect CollectibleStar signals
+        if let Ok(star) = node.clone().try_cast::<CollectibleStar>() {
+            star.signals()
+                .star_collected()
+                .connect_other(&save_service, Self::on_star_collected);
+            godot_print!("[SaveService] connected to star_collected signal");
         }
     }
 
@@ -106,6 +120,18 @@ impl SaveService {
             DEFAULT_SAVE_SLOT,
             snapshot.room,
             snapshot.position
+        );
+    }
+
+    /// Handle star collection event.
+    #[func]
+    fn on_star_collected(&mut self, room_coords: Vector2i, position: Vector2) {
+        let room = (room_coords.x, room_coords.y);
+        mark_star_collected(room, position);
+        godot_print!(
+            "[SaveService] star collected at room {:?}, position {:?}",
+            room,
+            position
         );
     }
 }

@@ -20,7 +20,8 @@ pub use core::{
 
 // Re-export entity state management
 pub use entity_state::{
-    is_key_collected, is_lock_unlocked, mark_key_collected, mark_lock_unlocked,
+    get_star_count, is_key_collected, is_lock_unlocked, is_star_collected, mark_key_collected,
+    mark_lock_unlocked, mark_star_collected,
 };
 
 // Re-export exploration state

@@ -1,4 +1,5 @@
 /// UI module for managing menu systems and user interface components
 mod main_menu;
 mod pause_menu;
+mod star_counter;
 mod world_map;
