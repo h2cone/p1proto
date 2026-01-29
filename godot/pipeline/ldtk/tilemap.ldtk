@@ -11,7 +11,7 @@
 	"iid": "b72e8f40-ac70-11f0-a08c-3de4c05ee5af",
 	"jsonVersion": "1.5.3",
 	"appBuildId": 473703,
-	"nextUid": 65,
+	"nextUid": 66,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "GridVania",
@@ -878,6 +878,41 @@
 			"pivotX": 0,
 			"pivotY": 0,
 			"fieldDefs": []
+		},
+		{
+			"identifier": "CollectibleStar",
+			"uid": 65,
+			"tags": [],
+			"exportToToc": false,
+			"allowOutOfBounds": false,
+			"doc": null,
+			"width": 16,
+			"height": 16,
+			"resizableX": false,
+			"resizableY": false,
+			"minWidth": null,
+			"maxWidth": null,
+			"minHeight": null,
+			"maxHeight": null,
+			"keepAspectRatio": false,
+			"tileOpacity": 1,
+			"fillOpacity": 1,
+			"lineOpacity": 1,
+			"hollow": false,
+			"color": "#FFC649",
+			"renderMode": "Rectangle",
+			"showName": true,
+			"tilesetId": null,
+			"tileRenderMode": "FitInside",
+			"tileRect": null,
+			"uiTileRect": null,
+			"nineSliceBorders": [],
+			"maxCount": 0,
+			"limitScope": "PerLevel",
+			"limitBehavior": "MoveLastOne",
+			"pivotX": 0,
+			"pivotY": 0,
+			"fieldDefs": []
 		}
 	], "tilesets": [
 		{
@@ -1686,6 +1721,22 @@
 							"fieldInstances": [],
 							"__worldX": 824,
 							"__worldY": 440
+						},
+						{
+							"__identifier": "CollectibleStar",
+							"__grid": [23,22],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#FFC649",
+							"iid": "b3ebd360-fa90-11f0-943d-11ec93e38c1d",
+							"width": 16,
+							"height": 16,
+							"defUid": 65,
+							"px": [184,176],
+							"fieldInstances": [],
+							"__worldX": 824,
+							"__worldY": 416
 						}
 					]
 				},
@@ -1936,7 +1987,7 @@
 							"__tags": [],
 							"__tile": null,
 							"__smartColor": "#63C74D",
-							"iid": "997ed4d0-d380-11f0-9d59-99b9d2423c54",
+							"iid": "ee97a980-fa90-11f0-943d-e7dfd52aac95",
 							"width": 16,
 							"height": 32,
 							"defUid": 19,
@@ -2192,20 +2243,20 @@
 					"gridTiles": [],
 					"entityInstances": [
 						{
-							"__identifier": "Checkpoint",
-							"__grid": [1,25],
+							"__identifier": "CollectibleStar",
+							"__grid": [1,26],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
-							"__smartColor": "#63C74D",
-							"iid": "fb0f2d30-d380-11f0-a516-8b60c52bc4f4",
+							"__smartColor": "#FFC649",
+							"iid": "06d46280-fa90-11f0-943d-ff9e55fffd24",
 							"width": 16,
-							"height": 32,
-							"defUid": 19,
-							"px": [8,200],
+							"height": 16,
+							"defUid": 65,
+							"px": [8,208],
 							"fieldInstances": [],
 							"__worldX": 328,
-							"__worldY": 200
+							"__worldY": 208
 						}
 					]
 				},
@@ -2549,6 +2600,22 @@
 							"fieldInstances": [],
 							"__worldX": 648,
 							"__worldY": 696
+						},
+						{
+							"__identifier": "CollectibleStar",
+							"__grid": [1,19],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#FFC649",
+							"iid": "fefc5400-fa90-11f0-943d-39e9eb419e63",
+							"width": 16,
+							"height": 16,
+							"defUid": 65,
+							"px": [8,152],
+							"fieldInstances": [],
+							"__worldX": 648,
+							"__worldY": 632
 						}
 					]
 				},

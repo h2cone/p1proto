@@ -1,4 +1,6 @@
-[gd_scene format=3 uid="uid://bn0g0fos7pnlj"]
+[gd_scene load_steps=2 format=3 uid="uid://bn0g0fos7pnlj"]
+
+[ext_resource type="Texture2D" uid="uid://c8rdw12dkmn6m" path="res://ui/star_icon.tres" id="1_star"]
 
 [node name="PauseMenu" type="PauseMenu"]
 anchors_preset = 15
@@ -43,3 +45,24 @@ custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 text = "QUIT TO MENU"
+
+[node name="StarDisplay" type="Control" parent="."]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 48.0
+offset_bottom = 28.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="StarDisplay"]
+layout_mode = 0
+theme_override_constants/separation = 4
+
+[node name="TextureRect" type="TextureRect" parent="StarDisplay/HBoxContainer"]
+layout_mode = 2
+texture = ExtResource("1_star")
+
+[node name="Label" type="Label" parent="StarDisplay/HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "0"
+vertical_alignment = 1

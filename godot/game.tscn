@@ -1,18 +1,25 @@
-[gd_scene load_steps=4 format=3 uid="uid://bvfi37bgphi6x"]
+[gd_scene format=3 uid="uid://bvfi37bgphi6x"]
 
 [ext_resource type="PackedScene" uid="uid://bn0g0fos7pnlj" path="res://ui/pause_menu.tscn" id="1_80nbo"]
 [ext_resource type="PackedScene" path="res://ui/world_map.tscn" id="2_8krcl"]
 [ext_resource type="AudioStream" uid="uid://cx3nkttghf2pf" path="res://pipeline/glicol/bgm.ogg" id="3_e2o6t"]
+[ext_resource type="PackedScene" uid="uid://b84pqtefrgmr0" path="res://ui/star_counter.tscn" id="4_fc0e3"]
 
-[node name="Game" type="Game"]
+[node name="Game" type="Game" unique_id=1144876511]
 
-[node name="RoomManager" type="RoomManager" parent="."]
+[node name="RoomManager" type="RoomManager" parent="." unique_id=393335674]
 
-[node name="PauseMenu" parent="." instance=ExtResource("1_80nbo")]
+[node name="PauseMenu" parent="." unique_id=704314482 instance=ExtResource("1_80nbo")]
 
-[node name="WorldMap" parent="." instance=ExtResource("2_8krcl")]
+[node name="WorldMap" parent="." unique_id=525928270 instance=ExtResource("2_8krcl")]
 
-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+[node name="StarCounter" parent="." unique_id=1576082272 instance=ExtResource("4_fc0e3")]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 8.0
+offset_bottom = 8.0
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=405292200]
 stream = ExtResource("3_e2o6t")
 autoplay = true
 parameters/looping = true

@@ -4,7 +4,7 @@
 # Automatically sets up entities during import based on their identifier
 
 # Entities that require room_coords to be set (use LDtk identifier in PascalCase)
-const ENTITIES_WITH_ROOM_COORDS := ["Checkpoint", "PlainKey", "PlainLock", "Portal", "SwitchDoor"]
+const ENTITIES_WITH_ROOM_COORDS := ["Checkpoint", "PlainKey", "PlainLock", "Portal", "SwitchDoor", "CollectibleStar"]
 
 # Entities that use IID-based naming (EntityIdentifier_IID8)
 const ENTITIES_WITH_IID_NAME := ["SwitchDoor"]

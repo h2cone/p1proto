@@ -1,7 +1,9 @@
 use godot::{
-    classes::{Button, Control, IControl},
+    classes::{Button, Control, IControl, Label},
     prelude::*,
 };
+
+use crate::save;
 
 /// PauseMenu manages the game's pause menu UI and handles pause/resume functionality
 #[derive(GodotClass)]
@@ -10,6 +12,7 @@ pub struct PauseMenu {
     base: Base<Control>,
     resume_button: OnReady<Gd<Button>>,
     quit_button: OnReady<Gd<Button>>,
+    star_label: OnReady<Gd<Label>>,
 }
 
 #[godot_api]
@@ -19,6 +22,7 @@ impl IControl for PauseMenu {
             base,
             resume_button: OnReady::from_node("VBoxContainer/ResumeButton"),
             quit_button: OnReady::from_node("VBoxContainer/QuitButton"),
+            star_label: OnReady::from_node("StarDisplay/HBoxContainer/Label"),
         }
     }
 
@@ -71,6 +75,11 @@ impl PauseMenu {
         let is_visible = self.base().is_visible();
         let new_state = !is_visible;
 
+        // Update star count when showing
+        if new_state {
+            self.update_star_display();
+        }
+
         // Toggle visibility
         self.base_mut().set_visible(new_state);
 
@@ -80,6 +89,11 @@ impl PauseMenu {
         }
 
         godot_print!("[PauseMenu] pause toggled: {}", new_state);
+    }
+
+    fn update_star_display(&mut self) {
+        let count = save::get_star_count();
+        self.star_label.set_text(&format!("{}", count));
     }
 
     fn is_world_map_visible(&self) -> bool {

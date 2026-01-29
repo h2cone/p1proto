@@ -13,8 +13,8 @@ dependencies = [
 
 [[package]]
 name = "gdextension-api"
-version = "0.3.2"
-source = "git+https://github.com/godot-rust/godot4-prebuilt?branch=release-v0.3#9ea85a8280daa59a93779359914b1673529a8945"
+version = "0.3.3"
+source = "git+https://github.com/godot-rust/godot4-prebuilt?branch=release-v0.3#87ac4b022eaa1c03ac24bcbb77507b6d16302185"
 
 [[package]]
 name = "glam"

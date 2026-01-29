@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://b84pqtefrgmr0"]
+
+[ext_resource type="Texture2D" uid="uid://c8rdw12dkmn6m" path="res://ui/star_icon.tres" id="1_sayjs"]
+
+[node name="StarCounter" type="StarCounter" unique_id=1576082272]
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1439742699]
+layout_mode = 0
+
+[node name="TextureRect" type="TextureRect" parent="HBoxContainer" unique_id=250389488]
+layout_mode = 2
+texture = ExtResource("1_sayjs")
+
+[node name="Label" type="Label" parent="HBoxContainer" unique_id=561542009]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "0"
