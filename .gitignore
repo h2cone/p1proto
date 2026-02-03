@@ -6,3 +6,6 @@ nul
 
 # Debug
 console.log
+
+# Build artifacts
+build/
