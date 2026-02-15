@@ -9,3 +9,6 @@ console.log
 
 # Build artifacts
 build/
+
+# macOS
+.DS_Store

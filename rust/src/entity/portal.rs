@@ -5,7 +5,7 @@ const ACTIVATE_ACTION: &str = "act_up";
 
 #[derive(GodotClass)]
 #[class(base=Area2D)]
-pub struct Portal {
+pub struct TeleportPortal {
     #[base]
     base: Base<Area2D>,
 
@@ -28,7 +28,7 @@ pub struct Portal {
 }
 
 #[godot_api]
-impl IArea2D for Portal {
+impl IArea2D for TeleportPortal {
     fn init(base: Base<Area2D>) -> Self {
         Self {
             base,
@@ -64,7 +64,7 @@ impl IArea2D for Portal {
 }
 
 #[godot_api]
-impl Portal {
+impl TeleportPortal {
     /// Signal emitted when portal teleport is activated
     #[signal]
     pub(crate) fn teleport_requested(destination_room: Vector2i);

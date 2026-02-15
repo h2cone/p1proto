@@ -4,13 +4,13 @@
 use godot::meta::UniformObjectDeref;
 use godot::prelude::*;
 
-use crate::entity::portal::Portal;
+use crate::entity::portal::TeleportPortal;
 
 /// Find Portal node in room's Entities layer.
-pub fn find_portal_in_room(room: &Gd<Node2D>, entity_layer: &str) -> Option<Gd<Portal>> {
+pub fn find_portal_in_room(room: &Gd<Node2D>, entity_layer: &str) -> Option<Gd<TeleportPortal>> {
     let entities = room.get_node_or_null(entity_layer)?;
     for child in entities.get_children().iter_shared() {
-        if let Ok(portal) = child.try_cast::<Portal>() {
+        if let Ok(portal) = child.try_cast::<TeleportPortal>() {
             return Some(portal);
         }
     }
@@ -19,7 +19,7 @@ pub fn find_portal_in_room(room: &Gd<Node2D>, entity_layer: &str) -> Option<Gd<P
 
 /// Connect portal's teleport_requested signal to a target node's method.
 pub fn connect_portal_signal<T, Declarer>(
-    portal: &Gd<Portal>,
+    portal: &Gd<TeleportPortal>,
     target: &Gd<T>,
     method: fn(&mut T, Vector2i),
 ) where
