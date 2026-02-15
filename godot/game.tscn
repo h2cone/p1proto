@@ -1,14 +1,13 @@
 [gd_scene format=3 uid="uid://bvfi37bgphi6x"]
 
-[ext_resource type="PackedScene" path="res://game/room_manager.tscn" id="0_rm"]
 [ext_resource type="PackedScene" uid="uid://bn0g0fos7pnlj" path="res://ui/pause_menu.tscn" id="1_80nbo"]
-[ext_resource type="PackedScene" path="res://ui/world_map.tscn" id="2_8krcl"]
+[ext_resource type="PackedScene" uid="uid://b6hg4i2wbn3kh" path="res://ui/world_map.tscn" id="2_8krcl"]
 [ext_resource type="AudioStream" uid="uid://cx3nkttghf2pf" path="res://pipeline/glicol/bgm.ogg" id="3_e2o6t"]
 [ext_resource type="PackedScene" uid="uid://b84pqtefrgmr0" path="res://ui/star_counter.tscn" id="4_fc0e3"]
 
 [node name="Game" type="Game" unique_id=1144876511]
 
-[node name="RoomManager" parent="." unique_id=393335674 instance=ExtResource("0_rm")]
+[node name="RoomManager" type="RoomManager" parent="." unique_id=158921282]
 
 [node name="PauseMenu" parent="." unique_id=704314482 instance=ExtResource("1_80nbo")]
 
@@ -22,5 +21,4 @@ offset_bottom = 8.0
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=405292200]
 stream = ExtResource("3_e2o6t")
-autoplay = false
 parameters/looping = true
