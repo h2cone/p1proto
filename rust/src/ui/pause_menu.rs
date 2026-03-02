@@ -84,9 +84,8 @@ impl PauseMenu {
         self.base_mut().set_visible(new_state);
 
         // Toggle pause state
-        if let Some(mut tree) = self.base().get_tree() {
-            tree.set_pause(new_state);
-        }
+        let mut tree = self.base().get_tree();
+        tree.set_pause(new_state);
 
         godot_print!("[PauseMenu] pause toggled: {}", new_state);
     }
@@ -122,9 +121,8 @@ impl PauseMenu {
         godot_print!("[PauseMenu] quit to menu button pressed");
 
         // Unpause before changing scene
-        if let Some(mut tree) = self.base().get_tree() {
-            tree.set_pause(false);
-            let _result = tree.change_scene_to_file("res://ui/main_menu.tscn");
-        }
+        let mut tree = self.base().get_tree();
+        tree.set_pause(false);
+        let _result = tree.change_scene_to_file("res://ui/main_menu.tscn");
     }
 }

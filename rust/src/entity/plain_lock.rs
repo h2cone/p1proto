@@ -69,7 +69,7 @@ impl PlainLock {
     }
 
     fn find_collected_key(&self) -> Option<Gd<PlainKey>> {
-        let mut tree = self.base().get_tree()?;
+        let tree = self.base().get_tree();
         let keys = tree.get_nodes_in_group("plain_keys");
 
         for node in keys.iter_shared() {

@@ -67,9 +67,7 @@ impl StarCounter {
             tween.kill();
         }
 
-        let Some(mut tween) = self.base().get_tree().and_then(|mut t| t.create_tween()) else {
-            return;
-        };
+        let mut tween = self.base_mut().create_tween();
 
         tween.set_pause_mode(tween::TweenPauseMode::PROCESS);
 
@@ -78,17 +76,13 @@ impl StarCounter {
         let hidden = Color::from_rgba(1.0, 1.0, 1.0, 0.0);
 
         // Fade in
-        tween
-            .tween_property(&target, "modulate", &visible.to_variant(), FADE_DURATION)
-            .unwrap();
+        let _ = tween.tween_property(&target, "modulate", &visible.to_variant(), FADE_DURATION);
 
         // Wait
         tween.tween_interval(DISPLAY_DURATION);
 
         // Fade out
-        tween
-            .tween_property(&target, "modulate", &hidden.to_variant(), FADE_DURATION)
-            .unwrap();
+        let _ = tween.tween_property(&target, "modulate", &hidden.to_variant(), FADE_DURATION);
 
         self.current_tween = Some(tween);
     }

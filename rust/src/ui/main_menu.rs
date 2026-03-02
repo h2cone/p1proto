@@ -75,9 +75,8 @@ impl MainMenu {
         save::reset_all();
 
         // Load and switch to game scene
-        if let Some(mut tree) = self.base().get_tree() {
-            let _result = tree.change_scene_to_file("res://game.tscn");
-        }
+        let mut tree = self.base().get_tree();
+        let _result = tree.change_scene_to_file("res://game.tscn");
     }
 
     /// Handle continue button press - queue load and switch to game scene
@@ -88,9 +87,8 @@ impl MainMenu {
                 "[MainMenu] continue button pressed - loading save slot {}",
                 DEFAULT_SAVE_SLOT
             );
-            if let Some(mut tree) = self.base().get_tree() {
-                let _result = tree.change_scene_to_file("res://game.tscn");
-            }
+            let mut tree = self.base().get_tree();
+            let _result = tree.change_scene_to_file("res://game.tscn");
         } else {
             godot_warn!("Continue requested but no save data available");
         }
@@ -123,8 +121,7 @@ impl MainMenu {
         godot_print!("[MainMenu] quit button pressed");
 
         // Quit the application
-        if let Some(mut tree) = self.base().get_tree() {
-            tree.quit();
-        }
+        let mut tree = self.base().get_tree();
+        tree.quit();
     }
 }

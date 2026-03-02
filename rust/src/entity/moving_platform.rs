@@ -61,10 +61,7 @@ impl MovingPlatform {
             tween.kill();
         }
 
-        let Some(mut tween) = self.base_mut().create_tween() else {
-            godot_error!("MovingPlatform failed to create tween");
-            return;
-        };
+        let mut tween = self.base_mut().create_tween();
 
         let _ = tween.set_process_mode(tween::TweenProcessMode::PHYSICS);
         let _ = tween.set_pause_mode(tween::TweenPauseMode::PROCESS);
@@ -85,23 +82,13 @@ impl MovingPlatform {
         let start_variant = Variant::from(self.start_position);
         let end_variant = Variant::from(end_position);
 
-        if tween
-            .tween_property(&target_object, position_path, &end_variant, leg_duration)
-            .is_none()
-        {
-            godot_warn!("MovingPlatform could not add forward tween");
-        }
+        let _ = tween.tween_property(&target_object, position_path, &end_variant, leg_duration);
 
         if self.pause_time > 0.0 {
             let _ = tween.tween_interval(self.pause_time);
         }
 
-        if tween
-            .tween_property(&target_object, position_path, &start_variant, leg_duration)
-            .is_none()
-        {
-            godot_warn!("MovingPlatform could not add return tween");
-        }
+        let _ = tween.tween_property(&target_object, position_path, &start_variant, leg_duration);
 
         if self.pause_time > 0.0 {
             let _ = tween.tween_interval(self.pause_time);

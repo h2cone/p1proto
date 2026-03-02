@@ -169,9 +169,7 @@ impl WorldMap {
     }
 
     fn apply_pause(&mut self, should_pause: bool) {
-        let Some(mut tree) = self.base().get_tree() else {
-            return;
-        };
+        let mut tree = self.base().get_tree();
 
         if should_pause {
             tree.set_pause(true);

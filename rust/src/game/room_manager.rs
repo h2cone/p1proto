@@ -334,9 +334,8 @@ impl RoomManager {
             godot_print!("[RoomManager] player death - restarting");
         }
 
-        if let Some(mut tree) = self.base().get_tree() {
-            let _result = tree.change_scene_to_file("res://game.tscn");
-        }
+        let mut tree = self.base().get_tree();
+        let _result = tree.change_scene_to_file("res://game.tscn");
     }
 
     /// Expose current room for UI (world map).
