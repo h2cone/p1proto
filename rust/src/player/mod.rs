@@ -50,14 +50,7 @@ impl ICharacterBody2D for Player {
     }
 
     fn ready(&mut self) {
-        let config = MovementConfig {
-            walk_speed: 120.0,
-            accel_speed: 720.0,
-            jump_velocity: -300.0,
-            min_walk_speed: 0.1,
-            ..Default::default()
-        };
-        self.movement = Some(PlayerMovement::new(config));
+        self.movement = Some(PlayerMovement::new(MovementConfig::default()));
 
         self.moving_platform_mask_default =
             self.base().get_collision_mask_value(MOVING_PLATFORM_LAYER);
@@ -93,10 +86,8 @@ impl ICharacterBody2D for Player {
         let movement_input = input_adapter::collect_movement_input(&self.input_actions);
 
         // Process movement and get new velocity and state
-        let (new_velocity, state) = if let Some(movement) = &mut self.movement {
-            let new_velocity =
-                movement.physics_process(velocity, is_on_floor, delta, movement_input);
-            (new_velocity, movement.state)
+        let new_velocity = if let Some(movement) = &mut self.movement {
+            movement.physics_process(velocity, is_on_floor, delta, movement_input)
         } else {
             return;
         };
@@ -104,6 +95,15 @@ impl ICharacterBody2D for Player {
         // Update physics
         self.base_mut().set_velocity(new_velocity);
         self.base_mut().move_and_slide();
+
+        let resolved_velocity = self.base().get_velocity();
+        let is_on_floor_after_move = self.base().is_on_floor();
+        let state = if let Some(movement) = &mut self.movement {
+            movement.post_physics_update(is_on_floor_after_move);
+            movement.state
+        } else {
+            return;
+        };
 
         if self.check_hazard_collision() {
             self.start_death();
@@ -114,14 +114,20 @@ impl ICharacterBody2D for Player {
         self.push_rigid_bodies();
 
         // Update animation
+        let visual_direction_x =
+            animation::resolve_visual_direction_x(movement_input.direction, resolved_velocity.x);
         let is_walking = self
             .movement
             .as_ref()
-            .map(|m| m.is_walking(new_velocity))
+            .map(|m| m.is_walking_or_pressing(resolved_velocity, movement_input.direction))
             .unwrap_or(false);
-        animation::update_sprite_direction(&mut self.sprite, new_velocity.x);
-        let anim =
-            animation::get_animation_name(state, new_velocity, is_walking, &self.animation_names);
+        animation::update_sprite_direction(&mut self.sprite, visual_direction_x);
+        let anim = animation::get_animation_name(
+            state,
+            resolved_velocity,
+            is_walking,
+            &self.animation_names,
+        );
         animation::play_animation_if_changed(&mut self.sprite, anim);
     }
 }
@@ -171,6 +177,16 @@ impl Player {
         let mask_default = self.moving_platform_mask_default;
         self.base_mut()
             .set_collision_mask_value(MOVING_PLATFORM_LAYER, mask_default);
+    }
+
+    pub(crate) fn reset_for_room_transition(&mut self) {
+        if let Some(movement) = &mut self.movement {
+            movement.reset_transient_state();
+        }
+
+        if self.drop_through_timer > 0.0 {
+            self.stop_drop_through();
+        }
     }
 
     fn start_death(&mut self) {

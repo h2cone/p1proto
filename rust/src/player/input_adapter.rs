@@ -32,6 +32,7 @@ pub fn collect_movement_input(actions: &InputActions) -> MovementInput {
     MovementInput {
         direction: input.get_axis(actions.walk_left, actions.walk_right),
         jump_just_pressed: input.is_action_just_pressed(actions.jump),
+        jump_just_released: input.is_action_just_released(actions.jump),
     }
 }
 

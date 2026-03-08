@@ -223,6 +223,7 @@ impl RoomManager {
         }
 
         self.disable_player_collision_for_transition(player);
+        self.reset_player_state_for_transition(player);
 
         // Destroy old room
         if let Some(mut old_room) = self.current_room_node.take() {
@@ -286,6 +287,15 @@ impl RoomManager {
         if let Some(ref mut service) = self.save_service {
             service.bind_mut().connect_room_entities(room.clone());
         }
+    }
+
+    fn reset_player_state_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
+        let Ok(mut player_script) = player.clone().try_cast::<Player>() else {
+            godot_warn!("[RoomManager] player script not found - transition state not reset");
+            return;
+        };
+
+        player_script.bind_mut().reset_for_room_transition();
     }
 
     fn connect_player_signals(&mut self, player: &Gd<CharacterBody2D>) {
