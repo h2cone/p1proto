@@ -1,19 +1,19 @@
 //! Save system module.
 //!
 //! Split into layers:
-//! - `core`: Generic checkpoint slot management (game-agnostic)
+//! - `checkpoint_store`: Checkpoint slot storage and pending-load tracking (game-agnostic)
 //! - `entity_state`: Game-specific entity state persistence (keys, locks)
 //! - `service`: Event-driven save handler (Godot node)
 
-mod core;
+mod checkpoint_store;
 mod entity_state;
 mod exploration;
 mod service;
 
 use godot::prelude::*;
 
-// Re-export core save system
-pub use core::{
+// Re-export checkpoint save storage
+pub use checkpoint_store::{
     DEFAULT_SAVE_SLOT, SaveSnapshot, has_save, peek_checkpoint, queue_load, save_checkpoint,
     take_pending_load,
 };
@@ -32,7 +32,7 @@ pub use service::SaveService;
 
 /// Reset all game state (for new game).
 pub fn reset_all() {
-    core::reset();
+    checkpoint_store::reset();
     entity_state::reset();
     exploration::reset();
 }
@@ -71,7 +71,7 @@ impl SaveApi {
     /// Clear any pending load flag without removing the saved data itself.
     #[func]
     pub fn clear_pending_load(&self) {
-        core::clear_pending_load();
+        checkpoint_store::clear_pending_load();
     }
 
     /// Returns explored room coordinates for world map display.

@@ -1,4 +1,4 @@
-//! Core save system: checkpoint slots and pending load management.
+//! Checkpoint save storage: slot snapshots and pending load management.
 //! This module is game-agnostic and can be reused across different projects.
 
 use godot::prelude::*;
@@ -21,13 +21,13 @@ impl SaveSnapshot {
 }
 
 #[derive(Default)]
-struct CoreStore {
+struct CheckpointStore {
     slots: Vec<Option<SaveSnapshot>>,
     /// Which slot should be loaded on the next game start.
     pending_load_slot: Option<usize>,
 }
 
-impl CoreStore {
+impl CheckpointStore {
     fn ensure_slot(&mut self, slot: usize) {
         if self.slots.len() <= slot {
             self.slots.resize(slot + 1, None);
@@ -36,7 +36,7 @@ impl CoreStore {
 }
 
 thread_local! {
-    static STORE: RefCell<CoreStore> = RefCell::new(CoreStore::default());
+    static STORE: RefCell<CheckpointStore> = RefCell::new(CheckpointStore::default());
 }
 
 /// Save checkpoint data into the specified slot.
@@ -94,7 +94,7 @@ pub fn clear_pending_load() {
     });
 }
 
-/// Reset core save state (for new game).
+/// Reset checkpoint save state (for new game).
 pub fn reset() {
     STORE.with_borrow_mut(|store| {
         store.slots.clear();
