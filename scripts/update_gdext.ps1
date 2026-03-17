@@ -78,22 +78,60 @@ function Get-LatestGitRev([string]$RepositoryUrl, [string]$BranchName) {
 
 function Get-GodotRevMatch([string]$CargoTomlPath) {
   $content = Get-Content -Raw -LiteralPath $CargoTomlPath
-  $pattern = '(?ms)(godot\s*=\s*\{[^}]*?\brev\s*=\s*")(?<rev>[0-9a-f]{40})(")'
+  $pattern = '(?ms)(?<prefix>\bgodot\s*=\s*\{)(?<body>[^}]*)(?<suffix>\})'
   $match = [regex]::Match($content, $pattern)
   if (-not $match.Success) {
-    throw "Could not find a pinned 'godot' rev in $CargoTomlPath"
+    throw "Could not find a 'godot' dependency inline table in $CargoTomlPath"
   }
+
+  $body = $match.Groups['body'].Value
+  if ($body -notmatch '\bgit\s*=\s*"(?<git>[^"]+)"') {
+    throw "Could not find a git-based 'godot' dependency in $CargoTomlPath"
+  }
+
+  $revMatch = [regex]::Match($body, '\brev\s*=\s*"(?<rev>[0-9a-f]{40})"')
 
   return @{
     Content = $content
     Match = $match
-    Rev = $match.Groups['rev'].Value
+    Body = $body
+    GitUrl = $Matches.git
+    RevMatch = $revMatch
+    Rev = if ($revMatch.Success) { $revMatch.Groups['rev'].Value } else { $null }
   }
 }
 
-function Get-CurrentGodotRev([string]$CargoTomlPath) {
+function Get-GodotRevFromLockfile([string]$LockfilePath, [string]$RepositoryUrl) {
+  if (-not (Test-Path -LiteralPath $LockfilePath)) {
+    throw "Cargo.lock not found: $LockfilePath"
+  }
+
+  $normalizedUrl = $RepositoryUrl -replace '\.git$', ''
+  $escapedUrl = [regex]::Escape($normalizedUrl)
+  $content = Get-Content -Raw -LiteralPath $LockfilePath
+  $pattern = "(?ms)\[\[package\]\]\s*name\s*=\s*`"godot`".*?source\s*=\s*`"git\+$escapedUrl(?:\.git)?(?:\?[^`"#]+)?#(?<rev>[0-9a-f]{40})`""
+  $match = [regex]::Match($content, $pattern)
+  if (-not $match.Success) {
+    throw "Could not find the resolved 'godot' git rev in $LockfilePath"
+  }
+
+  return $match.Groups['rev'].Value
+}
+
+function Get-GodotRevState([string]$CargoTomlPath, [string]$LockfilePath) {
   $matchInfo = Get-GodotRevMatch -CargoTomlPath $CargoTomlPath
-  return $matchInfo.Rev
+  $lockfileRev = $null
+
+  if (Test-Path -LiteralPath $LockfilePath) {
+    $lockfileRev = Get-GodotRevFromLockfile -LockfilePath $LockfilePath -RepositoryUrl $matchInfo.GitUrl
+  }
+
+  return @{
+    Dependency = $matchInfo
+    ManifestRev = $matchInfo.Rev
+    LockfileRev = $lockfileRev
+    ResolvedRev = if ($matchInfo.Rev) { $matchInfo.Rev } elseif ($lockfileRev) { $lockfileRev } else { $null }
+  }
 }
 
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
@@ -104,13 +142,34 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
 function Set-GodotRev([string]$CargoTomlPath, [string]$NewRev) {
   $matchInfo = Get-GodotRevMatch -CargoTomlPath $CargoTomlPath
   $content = $matchInfo.Content
-  $revGroup = $matchInfo.Match.Groups['rev']
+  $body = $matchInfo.Body
 
-  if ($revGroup.Value -eq $NewRev) {
+  if ($matchInfo.Rev -eq $NewRev) {
     return $false
   }
 
-  $updated = $content.Substring(0, $revGroup.Index) + $NewRev + $content.Substring($revGroup.Index + $revGroup.Length)
+  if ($matchInfo.RevMatch.Success) {
+    $revGroup = $matchInfo.RevMatch.Groups['rev']
+    $bodyUpdated = $body.Substring(0, $revGroup.Index) + $NewRev + $body.Substring($revGroup.Index + $revGroup.Length)
+  } else {
+    if ($body -match '\b(branch|tag)\s*=') {
+      throw "The 'godot' dependency in $CargoTomlPath uses branch/tag selectors without a pinned rev. Pin it manually before running this script."
+    }
+
+    $trimmedBody = $body -replace '\s+$', ''
+    $trailingWhitespace = $body.Substring($trimmedBody.Length)
+
+    if ([string]::IsNullOrWhiteSpace($trimmedBody)) {
+      $bodyUpdated = " rev = `"$NewRev`"" + $trailingWhitespace
+    } elseif ($trimmedBody.TrimEnd().EndsWith(',')) {
+      $bodyUpdated = $trimmedBody + " rev = `"$NewRev`"" + $trailingWhitespace
+    } else {
+      $bodyUpdated = $trimmedBody + ", rev = `"$NewRev`"" + $trailingWhitespace
+    }
+  }
+
+  $updatedMatch = $matchInfo.Match.Groups['prefix'].Value + $bodyUpdated + $matchInfo.Match.Groups['suffix'].Value
+  $updated = $content.Substring(0, $matchInfo.Match.Index) + $updatedMatch + $content.Substring($matchInfo.Match.Index + $matchInfo.Match.Length)
   Write-Utf8NoBom -Path $CargoTomlPath -Content $updated
   return $true
 }
@@ -124,20 +183,35 @@ if (-not (Test-Path $cargoTomlPath)) {
   throw "Cargo.toml not found: $cargoTomlPath"
 }
 
-$currentRev = Get-CurrentGodotRev -CargoTomlPath $cargoTomlPath
+$revState = Get-GodotRevState -CargoTomlPath $cargoTomlPath -LockfilePath $lockfilePath
+$currentRev = if ($revState.LockfileRev) { $revState.LockfileRev } else { $revState.ResolvedRev }
 $latestRev = Get-LatestGitRev -RepositoryUrl $RepoUrl -BranchName $Branch
 
-Write-Host "Current godot rev: $currentRev"
-Write-Host "Latest  godot rev: $latestRev"
+if ($revState.ManifestRev -and $revState.LockfileRev -and $revState.ManifestRev -ne $revState.LockfileRev) {
+  Write-Warning "Cargo.toml and Cargo.lock are out of sync for the 'godot' dependency. The lockfile will be refreshed."
+}
 
-if ($currentRev -eq $latestRev) {
-  Write-Host "godot dependency is already up to date."
+if ($currentRev) {
+  Write-Host "Current gdext rev: $currentRev"
+} else {
+  Write-Host "Current gdext rev: (unresolved)"
+}
+
+Write-Host "Latest  gdext rev: $latestRev"
+
+$needsManifestUpdate = $revState.ManifestRev -ne $latestRev
+$needsLockfileUpdate = -not $SkipLockfile -and (($null -eq $revState.LockfileRev) -or $revState.LockfileRev -ne $latestRev)
+
+if (-not $needsManifestUpdate -and -not $needsLockfileUpdate) {
+  Write-Host "gdext dependency is already up to date."
   exit 0
 }
 
 if ($DryRun) {
-  Write-Host "Dry run: would update rust/Cargo.toml to rev $latestRev"
-  if (-not $SkipLockfile) {
+  if ($needsManifestUpdate) {
+    Write-Host "Dry run: would update rust/Cargo.toml to rev $latestRev"
+  }
+  if ($needsLockfileUpdate) {
     Write-Host "Dry run: would run 'cargo update -p godot --precise $latestRev'"
   }
   exit 0
@@ -155,12 +229,11 @@ if ($hadLockfile) {
 }
 
 try {
-  $updated = Set-GodotRev -CargoTomlPath $cargoTomlPath -NewRev $latestRev
-  if (-not $updated) {
-    throw "Cargo.toml was not updated."
+  if ($needsManifestUpdate) {
+    Set-GodotRev -CargoTomlPath $cargoTomlPath -NewRev $latestRev | Out-Null
   }
 
-  if (-not $SkipLockfile) {
+  if ($needsLockfileUpdate) {
     Push-Location $rustDir
     try {
       & cargo update -p godot --precise $latestRev
@@ -180,5 +253,5 @@ catch {
   throw
 }
 
-Write-Host "Updated godot dependency to rev $latestRev"
+Write-Host "Updated gdext dependency to rev $latestRev"
 

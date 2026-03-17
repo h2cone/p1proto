@@ -43,7 +43,7 @@ struct CollisionRestore {
 
 #[derive(GodotClass)]
 #[class(base=Node2D)]
-pub struct RoomManager {
+pub struct GameRoomManager {
     base: Base<Node2D>,
     /// Initial room grid coordinates (editable in Godot).
     #[export]
@@ -72,7 +72,7 @@ pub struct RoomManager {
 }
 
 #[godot_api]
-impl INode2D for RoomManager {
+impl INode2D for GameRoomManager {
     fn init(base: Base<Node2D>) -> Self {
         Self {
             base,
@@ -154,7 +154,7 @@ impl INode2D for RoomManager {
 }
 
 #[godot_api]
-impl RoomManager {
+impl GameRoomManager {
     /// Load a room scene and add it to the RoomManager node
     fn load_and_add_room(&mut self, room_coords: (i32, i32)) -> Option<Gd<Node2D>> {
         let room_node = self.room_loader.instantiate_room(room_coords)?;

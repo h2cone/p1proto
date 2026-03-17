@@ -1,7 +1,7 @@
 //! Portal signal connection utilities.
 //! Handles finding and connecting portal entities in rooms.
 
-use godot::meta::UniformObjectDeref;
+use godot::meta::conv::UniformObjectDeref;
 use godot::prelude::*;
 
 use crate::entity::portal::TeleportPortal;

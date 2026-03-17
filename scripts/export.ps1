@@ -5,8 +5,8 @@ param(
   [string]$GodotExe = "godot",
   [string]$PresetName = "Windows Desktop",
 
-  [string]$OutDir = "build/windows",
-  [string]$ExeName = "p1proto.exe",
+  [string]$OutDir = "export",
+  [string]$ExeName = "game.exe",
 
   [switch]$ForceCreateExportPreset,
   [switch]$IncludePdb,
@@ -21,6 +21,62 @@ function Assert-CommandExists([string]$CommandName) {
   if (-not $cmd) {
     throw "Command not found: '$CommandName'. Ensure it is installed and on PATH."
   }
+}
+
+function Assert-LastExitCode([string]$Action) {
+  if ($LASTEXITCODE -ne 0) {
+    throw "$Action failed with exit code $LASTEXITCODE."
+  }
+}
+
+function Resolve-CommandPath([string]$CommandName) {
+  $cmd = Get-Command $CommandName -ErrorAction SilentlyContinue
+  if (-not $cmd) {
+    throw "Command not found: '$CommandName'. Ensure it is installed and on PATH."
+  }
+
+  if ($cmd.Path) {
+    return $cmd.Path
+  }
+
+  return $cmd.Source
+}
+
+function Test-IsWindows() {
+  return [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+}
+
+function Resolve-GodotExecutable([string]$RequestedExe) {
+  $resolvedExe = Resolve-CommandPath $RequestedExe
+  if (-not (Test-IsWindows)) {
+    return $resolvedExe
+  }
+
+  $dir = Split-Path -Parent $resolvedExe
+  $base = [System.IO.Path]::GetFileNameWithoutExtension($resolvedExe)
+  $ext = [System.IO.Path]::GetExtension($resolvedExe)
+  if ($base -match '(?i)_console$') {
+    return $resolvedExe
+  }
+
+  $consoleSibling = Join-Path $dir ($base + "_console" + $ext)
+  if (Test-Path -LiteralPath $consoleSibling) {
+    return $consoleSibling
+  }
+
+  return $resolvedExe
+}
+
+function Wait-ForPath([string]$Path, [int]$TimeoutSeconds = 30, [int]$PollIntervalMilliseconds = 200) {
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    if (Test-Path -LiteralPath $Path) {
+      return $true
+    }
+    Start-Sleep -Milliseconds $PollIntervalMilliseconds
+  }
+
+  return (Test-Path -LiteralPath $Path)
 }
 
 function Normalize-GodotExtensionList([string]$GodotProjectDir) {
@@ -175,7 +231,7 @@ $($defaultOptions -join "`r`n")
 }
 
 Assert-CommandExists "cargo"
-Assert-CommandExists $GodotExe
+$resolvedGodotExe = Resolve-GodotExecutable $GodotExe
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $rustDir = Join-Path $repoRoot "rust"
@@ -187,12 +243,16 @@ if (-not $outDirAbs) {
 }
 $exportExeAbs = Join-Path $outDirAbs $ExeName
 
+Write-Host "Using Godot executable: $resolvedGodotExe"
+
 Write-Host "Building Rust GDExtension ($Build)..."
 Push-Location $rustDir
 try {
   & cargo build --release --locked
+  Assert-LastExitCode "cargo build --release --locked"
   if ($Build -eq "Both") {
     & cargo build --locked
+    Assert-LastExitCode "cargo build --locked"
   }
 } finally {
   Pop-Location
@@ -202,9 +262,11 @@ Write-Host "Ensuring Godot export preset exists ($PresetName)..."
 Ensure-ExportPresets -GodotProjectDir $godotDir -PresetName $PresetName -Force ([bool]$ForceCreateExportPreset)
 Normalize-GodotExtensionList -GodotProjectDir $godotDir
 
-$godotVersion = (& $GodotExe --version 2>$null | Select-Object -First 1)
+$godotVersionOutput = & $resolvedGodotExe --version 2>$null
+Assert-LastExitCode "$resolvedGodotExe --version"
+$godotVersion = $godotVersionOutput | Select-Object -First 1
 $templateVersion = $null
-if ($godotVersion -match '^(\d+\.\d+\.[^\.]+)') {
+if ($godotVersion -match '^(\d+\.\d+(?:\.\d+)?\.[^\.]+)') {
   $templateVersion = $Matches[1]
 }
 $templatesRoot = Join-Path $env:APPDATA "Godot/export_templates"
@@ -230,14 +292,15 @@ try {
       $godotArgs += "--recovery-mode"
     }
     $godotArgs += @("--path", $godotDir, "--export-release", $PresetName, $exportExeAbs)
-    & $GodotExe @godotArgs
+    & $resolvedGodotExe @godotArgs
+    Assert-LastExitCode "$resolvedGodotExe $($godotArgs -join ' ')"
   } finally {
     Pop-Location
   }
 } finally {
 }
 
-if (-not (Test-Path $exportExeAbs)) {
+if (-not (Wait-ForPath -Path $exportExeAbs -TimeoutSeconds 30)) {
   throw "Export failed: output exe not found at $exportExeAbs"
 }
 
