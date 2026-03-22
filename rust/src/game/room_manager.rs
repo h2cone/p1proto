@@ -130,8 +130,7 @@ impl GameRoomManager {
             parent.remove_child(&*player);
         }
 
-        self.player_runtime.disable_collision_for_transition(player);
-        self.player_runtime.reset_for_room_transition(player);
+        self.player_runtime.prepare_for_room_transition(player);
 
         let mut root = self.to_gd().upcast::<Node2D>();
         self.room_runtime.unload_current_room(&mut root);

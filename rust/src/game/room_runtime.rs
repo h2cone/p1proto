@@ -94,21 +94,19 @@ impl PlayerRuntime {
         self.player = Some(player);
     }
 
-    pub(crate) fn disable_collision_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
-        if let Some(state) = &mut self.pending_collision_restore {
-            state.frames_remaining = 1;
-            return;
-        }
+    pub(crate) fn prepare_for_room_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
+        // Reset transient player state before capturing the collision snapshot we
+        // want to restore after the new room has fully entered the tree.
+        self.reset_for_room_transition(player);
+        self.disable_collision_for_transition(player);
+    }
 
+    pub(crate) fn disable_collision_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
         let layer = player.get_collision_layer();
         let mask = player.get_collision_mask();
+        self.queue_collision_restore(layer, mask);
         player.set_collision_layer(0);
         player.set_collision_mask(0);
-        self.pending_collision_restore = Some(CollisionRestore {
-            layer,
-            mask,
-            frames_remaining: 1,
-        });
     }
 
     pub(crate) fn reset_for_room_transition(&self, player: &mut Gd<CharacterBody2D>) {
@@ -139,6 +137,21 @@ impl PlayerRuntime {
         self.pending_collision_restore = None;
     }
 
+    fn queue_collision_restore(&mut self, layer: u32, mask: u32) {
+        if let Some(state) = &mut self.pending_collision_restore {
+            state.layer = layer;
+            state.mask = mask;
+            state.frames_remaining = 1;
+            return;
+        }
+
+        self.pending_collision_restore = Some(CollisionRestore {
+            layer,
+            mask,
+            frames_remaining: 1,
+        });
+    }
+
     fn connect_death_signal(
         &self,
         player: &Gd<CharacterBody2D>,
@@ -153,5 +166,39 @@ impl PlayerRuntime {
             .signals()
             .death_finished()
             .connect_other(room_manager, GameRoomManager::on_player_death_finished);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn queue_collision_restore_initializes_pending_state() {
+        let mut runtime = PlayerRuntime::new("res://player/player.tscn");
+
+        runtime.queue_collision_restore(0b10, 0b1010);
+
+        let state = runtime.pending_collision_restore.expect("pending restore");
+        assert_eq!(state.layer, 0b10);
+        assert_eq!(state.mask, 0b1010);
+        assert_eq!(state.frames_remaining, 1);
+    }
+
+    #[test]
+    fn queue_collision_restore_refreshes_with_latest_snapshot() {
+        let mut runtime = PlayerRuntime::new("res://player/player.tscn");
+        runtime.pending_collision_restore = Some(CollisionRestore {
+            layer: 0b10,
+            mask: 0b0010,
+            frames_remaining: 0,
+        });
+
+        runtime.queue_collision_restore(0b10, 0b1010);
+
+        let state = runtime.pending_collision_restore.expect("pending restore");
+        assert_eq!(state.layer, 0b10);
+        assert_eq!(state.mask, 0b1010);
+        assert_eq!(state.frames_remaining, 1);
     }
 }
