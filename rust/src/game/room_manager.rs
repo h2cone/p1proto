@@ -1,74 +1,33 @@
 use godot::classes::CharacterBody2D;
 use godot::prelude::*;
 
-use super::{PlayerSpawner, SpawnResolver, connect_room_portal, find_portal_in_room};
-use crate::player::Player;
-use crate::rooms::{BoundaryDetector, RoomLoader};
-use crate::save::{self, DEFAULT_SAVE_SLOT, SaveService};
+use super::portal_connector::{connect_room_portal, find_portal_in_room};
+use super::room_runtime::{PlayerRuntime, RoomRuntime};
+use crate::core::session::{DeathPlan, RoomSession, RoomTransitionPlan, TransitionSpawn};
+use crate::core::world::{BoundaryDetector, RoomId, SpawnResolver};
+use crate::save::{self, DEFAULT_SAVE_SLOT};
 
-/// Default initial room grid coordinates (can be overridden in Godot).
-const INITIAL_ROOM: (i32, i32) = (0, 1);
-
-/// Default initial player position within the room (can be overridden in Godot).
+const INITIAL_ROOM: RoomId = (0, 1);
 const INITIAL_PLAYER_POS: Vector2 = Vector2::new(64.0, 64.0);
-
-/// Player scene path
 const PLAYER_SCENE_PATH: &str = "res://player/player.tscn";
-
-/// Room scene path pattern (LDtk level files)
 const ROOM_SCENE_PATTERN: &str = "res://pipeline/ldtk/levels/Room_{x}_{y}.scn";
-
-/// Transition threshold: 50% of player body must cross boundary
 const TRANSITION_THRESHOLD: f32 = 0.5;
-
-/// Entity layer name in LDtk imported scenes
 const ENTITY_LAYER_NAME: &str = "Entities";
-
-/// Default spawn position when portal is not found
 const DEFAULT_SPAWN_POS: Vector2 = Vector2::new(64.0, 64.0);
-
-/// How to determine the player's spawn position in a new room.
-enum SpawnMode {
-    /// Use a specific position (for boundary transitions).
-    Position(Vector2),
-    /// Spawn at the portal location in the target room.
-    AtPortal,
-}
-
-struct CollisionRestore {
-    layer: u32,
-    mask: u32,
-    frames_remaining: u8,
-}
 
 #[derive(GodotClass)]
 #[class(base=Node2D)]
 pub struct GameRoomManager {
     base: Base<Node2D>,
-    /// Initial room grid coordinates (editable in Godot).
     #[export]
     initial_room: Vector2i,
-    /// Initial player position within the room (editable in Godot).
     #[export]
     initial_player_pos: Vector2,
-    /// Room loader for managing scene loading
-    room_loader: RoomLoader,
-    /// Boundary detector for checking room transitions
+    room_runtime: RoomRuntime,
+    player_runtime: PlayerRuntime,
     boundary_detector: BoundaryDetector,
-    /// Player scene spawner
-    player_spawner: PlayerSpawner,
-    /// Spawn point resolver
     spawn_resolver: SpawnResolver,
-    /// Save service for entity persistence
-    save_service: Option<Gd<SaveService>>,
-    /// Current room grid coordinates
-    current_room: (i32, i32),
-    /// Current room node in scene tree
-    current_room_node: Option<Gd<Node2D>>,
-    /// Player character node
-    player: Option<Gd<CharacterBody2D>>,
-    /// Restore player collision after room transitions
-    pending_player_collision_restore: Option<CollisionRestore>,
+    room_session: RoomSession,
 }
 
 #[godot_api]
@@ -78,68 +37,40 @@ impl INode2D for GameRoomManager {
             base,
             initial_room: Vector2i::new(INITIAL_ROOM.0, INITIAL_ROOM.1),
             initial_player_pos: INITIAL_PLAYER_POS,
-            room_loader: RoomLoader::new(ROOM_SCENE_PATTERN.to_string()),
+            room_runtime: RoomRuntime::new(ROOM_SCENE_PATTERN),
+            player_runtime: PlayerRuntime::new(PLAYER_SCENE_PATH),
             boundary_detector: BoundaryDetector::new(TRANSITION_THRESHOLD),
-            player_spawner: PlayerSpawner::new(PLAYER_SCENE_PATH),
             spawn_resolver: SpawnResolver::new(INITIAL_ROOM, INITIAL_PLAYER_POS),
-            save_service: None,
-            current_room: INITIAL_ROOM,
-            current_room_node: None,
-            player: None,
-            pending_player_collision_restore: None,
+            room_session: RoomSession::new(INITIAL_ROOM),
         }
     }
 
     fn ready(&mut self) {
         godot_print!("[RoomManager] ready - initializing room transition system");
 
-        // Create and add SaveService as child node
-        let save_service = Gd::<SaveService>::from_init_fn(SaveService::init);
-        self.base_mut().add_child(&save_service);
-        self.save_service = Some(save_service);
-        godot_print!("[RoomManager] SaveService created");
-
-        // Apply editor overrides for initial room/position before resolving spawn.
         let initial_room = (self.initial_room.x, self.initial_room.y);
         let initial_pos = self.initial_player_pos;
         self.spawn_resolver = SpawnResolver::new(initial_room, initial_pos);
+        self.room_session = RoomSession::new(initial_room);
 
-        // Resolve spawn point from save or defaults
-        let spawn = self
-            .spawn_resolver
-            .resolve(|room| self.room_loader.room_exists(room));
+        let spawn = {
+            let room_runtime = &mut self.room_runtime;
+            self.room_session
+                .resolve_start(&self.spawn_resolver, |room| room_runtime.room_exists(room))
+        };
 
-        // Load and spawn target room
-        match self.load_and_add_room(spawn.room) {
+        let mut root = self.to_gd().upcast::<Node2D>();
+        match self.room_runtime.load_and_add_room(&mut root, spawn.room) {
             Some(mut room_node) => {
-                self.current_room = spawn.room;
-                save::mark_room_explored(spawn.room);
-                godot_print!("[RoomManager] spawned room at {:?}", spawn.room);
-
-                // Load and spawn player
-                match self.player_spawner.spawn() {
-                    Some(mut player) => {
-                        player.set_global_position(spawn.position);
-                        room_node.add_child(&player);
-                        self.connect_player_signals(&player);
-                        self.player = Some(player);
-                        godot_print!("[RoomManager] spawned player at {:?}", spawn.position);
-                    }
-                    None => {
-                        godot_error!(
-                            "Failed to load player scene for spawn at {:?}",
-                            spawn.position
-                        );
-                    }
+                self.finalize_room_load(&room_node, spawn.room);
+                if self.player_runtime.spawn_into_room(
+                    &mut room_node,
+                    spawn.position,
+                    &self.to_gd(),
+                ) {
+                    godot_print!("[RoomManager] spawned player at {:?}", spawn.position);
                 }
-
-                // Connect portal signals in the new room
-                self.connect_portal_signals(&room_node);
-
-                // Connect SaveService to entity signals
-                self.connect_save_service(&room_node);
-
-                self.current_room_node = Some(room_node);
+                self.room_runtime.set_current_room(room_node);
             }
             None => {
                 godot_error!("Failed to load room at {:?}", spawn.room);
@@ -148,130 +79,94 @@ impl INode2D for GameRoomManager {
     }
 
     fn physics_process(&mut self, _delta: f64) {
-        self.tick_player_collision_restore();
+        self.player_runtime.tick_collision_restore();
         self.check_room_transitions();
     }
 }
 
 #[godot_api]
 impl GameRoomManager {
-    /// Load a room scene and add it to the RoomManager node
-    fn load_and_add_room(&mut self, room_coords: (i32, i32)) -> Option<Gd<Node2D>> {
-        let room_node = self.room_loader.instantiate_room(room_coords)?;
-        self.base_mut().add_child(&room_node);
-        Some(room_node)
+    fn finalize_room_load(&mut self, room: &Gd<Node2D>, room_id: RoomId) {
+        self.room_session.complete_transition(room_id);
+        save::mark_room_explored(room_id);
+        self.connect_portal_signals(room);
+        godot_print!("[RoomManager] active room set to {:?}", room_id);
     }
 
-    /// Check if player should transition to an adjacent room
     fn check_room_transitions(&mut self) {
-        let Some(mut player) = self.player.take() else {
+        let Some(mut player) = self.player_runtime.take_player() else {
             return;
         };
 
-        // Get player position and velocity
-        let player_pos = player.get_global_position();
-        let player_velocity = player.get_velocity();
+        let plan = {
+            let room_runtime = &mut self.room_runtime;
+            self.room_session.plan_boundary_transition(
+                &self.boundary_detector,
+                player.get_global_position(),
+                player.get_velocity(),
+                |room| room_runtime.room_exists(room),
+            )
+        };
 
-        // Check for boundary crossing
-        let check =
-            self.boundary_detector
-                .check_transition(player_pos, player_velocity, self.current_room);
-
-        if let Some(transition) = check {
-            // Validate target room exists before transitioning
-            if self.room_loader.room_exists(transition.target_room) {
-                self.execute_room_transition(
-                    &mut player,
-                    transition.target_room,
-                    SpawnMode::Position(transition.new_position),
-                );
-            } else {
-                godot_warn!(
-                    "Cannot transition to room {:?} - room does not exist",
-                    transition.target_room
-                );
-            }
+        if let Some(plan) = plan {
+            self.execute_room_transition(&mut player, plan);
         }
 
-        self.player = Some(player);
+        self.player_runtime.store_player(player);
     }
 
-    /// Unified room transition logic.
-    ///
-    /// Handles both boundary transitions and portal teleports through a common flow:
-    /// - Remove player from current room
-    /// - Destroy old room
-    /// - Load new room
-    /// - Calculate spawn position based on SpawnMode
-    /// - Add player to new room
-    /// - Connect portal signals
     fn execute_room_transition(
         &mut self,
         player: &mut Gd<CharacterBody2D>,
-        target_room: (i32, i32),
-        spawn_mode: SpawnMode,
+        plan: RoomTransitionPlan,
     ) {
         godot_print!(
             "[RoomManager] transitioning from {:?} to {:?}",
-            self.current_room,
-            target_room
+            plan.from_room,
+            plan.to_room
         );
 
-        // Remove player from current room
         if let Some(mut parent) = player.get_parent() {
             parent.remove_child(&*player);
         }
 
-        self.disable_player_collision_for_transition(player);
-        self.reset_player_state_for_transition(player);
+        self.player_runtime.disable_collision_for_transition(player);
+        self.player_runtime.reset_for_room_transition(player);
 
-        // Destroy old room
-        if let Some(mut old_room) = self.current_room_node.take() {
-            self.base_mut().remove_child(&old_room);
-            old_room.queue_free();
-        }
+        let mut root = self.to_gd().upcast::<Node2D>();
+        self.room_runtime.unload_current_room(&mut root);
 
-        // Load new room
-        match self.load_and_add_room(target_room) {
+        match self.room_runtime.load_and_add_room(&mut root, plan.to_room) {
             Some(mut new_room) => {
-                self.current_room = target_room;
-                save::mark_room_explored(target_room);
-
-                // Calculate spawn position
-                let spawn_pos = match spawn_mode {
-                    SpawnMode::Position(pos) => pos,
-                    SpawnMode::AtPortal => find_portal_in_room(&new_room, ENTITY_LAYER_NAME)
-                        .map(|p| p.bind().get_spawn_position())
-                        .unwrap_or(DEFAULT_SPAWN_POS),
-                };
-
-                // Add player to new room
+                let spawn_pos = self.resolve_transition_spawn(&new_room, plan.spawn);
                 player.set_position(spawn_pos);
                 new_room.add_child(&*player);
 
-                // Connect portal signals
-                self.connect_portal_signals(&new_room);
-
-                // Connect SaveService to entity signals
-                self.connect_save_service(&new_room);
-
-                self.current_room_node = Some(new_room);
+                self.finalize_room_load(&new_room, plan.to_room);
+                self.room_runtime.set_current_room(new_room);
 
                 godot_print!(
                     "[RoomManager] room transition complete to {:?} at {:?}",
-                    target_room,
+                    plan.to_room,
                     spawn_pos
                 );
             }
             None => {
-                godot_error!("Failed to load target room {:?}", target_room);
-                // Fallback: add player back to RoomManager directly
-                self.base_mut().add_child(&*player);
+                godot_error!("Failed to load target room {:?}", plan.to_room);
+                root.add_child(&*player);
             }
         }
     }
 
-    /// Connect to portal teleport signals in the given room
+    fn resolve_transition_spawn(&self, room: &Gd<Node2D>, spawn: TransitionSpawn) -> Vector2 {
+        match spawn {
+            TransitionSpawn::Position(pos) => pos,
+            TransitionSpawn::AtPortal => find_portal_in_room(room, ENTITY_LAYER_NAME)
+                .map(|portal| portal.bind().get_spawn_position())
+                .unwrap_or(DEFAULT_SPAWN_POS),
+        }
+    }
+
     fn connect_portal_signals(&mut self, room: &Gd<Node2D>) {
         let room_manager = self.to_gd();
         connect_room_portal(
@@ -282,111 +177,55 @@ impl GameRoomManager {
         );
     }
 
-    /// Connect SaveService to entity signals in the given room
-    fn connect_save_service(&mut self, room: &Gd<Node2D>) {
-        if let Some(ref mut service) = self.save_service {
-            service.bind_mut().connect_room_entities(room.clone());
-        }
-    }
-
-    fn reset_player_state_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
-        let Ok(mut player_script) = player.clone().try_cast::<Player>() else {
-            godot_warn!("[RoomManager] player script not found - transition state not reset");
-            return;
-        };
-
-        player_script.bind_mut().reset_for_room_transition();
-    }
-
-    fn connect_player_signals(&mut self, player: &Gd<CharacterBody2D>) {
-        let Ok(player_script) = player.clone().try_cast::<Player>() else {
-            godot_warn!("[RoomManager] player script not found - death signal not connected");
-            return;
-        };
-
-        let room_manager = self.to_gd();
-        player_script
-            .signals()
-            .death_finished()
-            .connect_other(&room_manager, Self::on_player_death_finished);
-        godot_print!("[RoomManager] connected player death signal");
-    }
-
-    /// Handle portal teleport request
     #[func]
     fn on_portal_teleport_requested(&mut self, destination_room: Vector2i) {
         let target = (destination_room.x, destination_room.y);
-        godot_print!("[RoomManager] portal teleport requested to {:?}", target);
-
-        // Validate target room exists
-        if !self.room_loader.room_exists(target) {
+        let plan = {
+            let room_runtime = &mut self.room_runtime;
+            self.room_session
+                .plan_portal_transition(target, |room| room_runtime.room_exists(room))
+        };
+        let Some(plan) = plan else {
             godot_error!("Portal destination room {:?} does not exist", target);
-            return;
-        }
-
-        let Some(mut player) = self.player.take() else {
             return;
         };
 
-        self.execute_room_transition(&mut player, target, SpawnMode::AtPortal);
-        player.set_velocity(Vector2::ZERO);
+        let Some(mut player) = self.player_runtime.take_player() else {
+            return;
+        };
 
-        self.player = Some(player);
+        self.execute_room_transition(&mut player, plan);
+        player.set_velocity(Vector2::ZERO);
+        self.player_runtime.store_player(player);
     }
 
     #[func]
-    fn on_player_death_finished(&mut self) {
-        if save::has_save(DEFAULT_SAVE_SLOT) {
-            let _queued = save::queue_load(DEFAULT_SAVE_SLOT);
-            godot_print!("[RoomManager] player death - respawn at checkpoint");
-        } else {
-            save::reset_all();
-            godot_print!("[RoomManager] player death - restarting");
+    pub(crate) fn on_player_death_finished(&mut self) {
+        match self
+            .room_session
+            .plan_death(save::has_save(DEFAULT_SAVE_SLOT))
+        {
+            DeathPlan::ReloadCheckpoint => {
+                let _queued = save::queue_load(DEFAULT_SAVE_SLOT);
+                godot_print!("[RoomManager] player death - respawn at checkpoint");
+            }
+            DeathPlan::RestartGame => {
+                save::reset_all();
+                godot_print!("[RoomManager] player death - restarting");
+            }
         }
 
         let mut tree = self.base().get_tree();
         let _result = tree.change_scene_to_file("res://game.tscn");
     }
 
-    /// Expose current room for UI (world map).
     #[func]
     fn get_current_room(&self) -> Vector2i {
-        Vector2i::new(self.current_room.0, self.current_room.1)
+        self.current_room_vector()
     }
 
-    fn disable_player_collision_for_transition(&mut self, player: &mut Gd<CharacterBody2D>) {
-        if let Some(state) = &mut self.pending_player_collision_restore {
-            state.frames_remaining = 1;
-            return;
-        }
-
-        let layer = player.get_collision_layer();
-        let mask = player.get_collision_mask();
-        player.set_collision_layer(0);
-        player.set_collision_mask(0);
-        self.pending_player_collision_restore = Some(CollisionRestore {
-            layer,
-            mask,
-            frames_remaining: 1,
-        });
-    }
-
-    fn tick_player_collision_restore(&mut self) {
-        let Some(state) = &mut self.pending_player_collision_restore else {
-            return;
-        };
-
-        if state.frames_remaining > 0 {
-            state.frames_remaining -= 1;
-            return;
-        }
-
-        let Some(player) = self.player.as_mut() else {
-            return;
-        };
-
-        player.set_collision_layer(state.layer);
-        player.set_collision_mask(state.mask);
-        self.pending_player_collision_restore = None;
+    pub(crate) fn current_room_vector(&self) -> Vector2i {
+        let (x, y) = self.room_session.current_room();
+        Vector2i::new(x, y)
     }
 }

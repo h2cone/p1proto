@@ -1,6 +1,7 @@
-use godot::{classes::ProjectSettings, prelude::*};
+use godot::prelude::*;
 
 const INPUT_DEADZONE: f32 = 0.01;
+const DEFAULT_GRAVITY: f32 = 980.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MovementState {
@@ -32,9 +33,12 @@ pub struct MovementConfig {
 
 impl Default for MovementConfig {
     fn default() -> Self {
-        let settings = ProjectSettings::singleton();
-        let gravity = settings.get("physics/2d/default_gravity").to::<f64>() as f32;
+        Self::platformer(DEFAULT_GRAVITY)
+    }
+}
 
+impl MovementConfig {
+    pub fn platformer(gravity: f32) -> Self {
         Self {
             gravity,
             walk_speed: 120.0,

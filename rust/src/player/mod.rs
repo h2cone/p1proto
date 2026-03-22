@@ -1,18 +1,19 @@
 mod animation;
+mod hazard;
 mod input_adapter;
-mod movement;
+mod platform;
+mod push;
 
+pub use crate::core::player::{MovementConfig, MovementInput, MovementState, PlayerMovement};
 pub use animation::AnimationNames;
 pub use input_adapter::InputActions;
-pub use movement::{MovementConfig, MovementInput, MovementState, PlayerMovement};
 
 use godot::{
-    classes::{
-        AnimatedSprite2D, CharacterBody2D, CollisionObject2D, ICharacterBody2D,
-        KinematicCollision2D, Node, RigidBody2D,
-    },
+    classes::{AnimatedSprite2D, CharacterBody2D, ICharacterBody2D, ProjectSettings},
     prelude::*,
 };
+
+use self::platform::PlatformDropController;
 
 const MOVING_PLATFORM_LAYER: i32 = 4;
 const HAZARD_LAYER: i32 = 12;
@@ -29,8 +30,7 @@ pub struct Player {
     sprite: OnReady<Gd<AnimatedSprite2D>>,
     input_actions: InputActions,
     animation_names: AnimationNames,
-    drop_through_timer: f64,
-    moving_platform_mask_default: bool,
+    drop_controller: PlatformDropController,
     is_dying: bool,
 }
 
@@ -43,17 +43,23 @@ impl ICharacterBody2D for Player {
             sprite: OnReady::from_node("AnimatedSprite2D"),
             input_actions: InputActions::default(),
             animation_names: AnimationNames::default(),
-            drop_through_timer: 0.0,
-            moving_platform_mask_default: true,
+            drop_controller: PlatformDropController::new(
+                DROP_THROUGH_DURATION,
+                MOVING_PLATFORM_LAYER,
+            ),
             is_dying: false,
         }
     }
 
     fn ready(&mut self) {
-        self.movement = Some(PlayerMovement::new(MovementConfig::default()));
+        self.movement = Some(PlayerMovement::new(MovementConfig::platformer(
+            project_gravity(),
+        )));
 
-        self.moving_platform_mask_default =
+        let moving_platform_mask_default =
             self.base().get_collision_mask_value(MOVING_PLATFORM_LAYER);
+        self.drop_controller
+            .configure_mask_default(moving_platform_mask_default);
 
         let player = self.to_gd();
         self.sprite
@@ -73,36 +79,40 @@ impl ICharacterBody2D for Player {
             return;
         }
 
-        // Get immutable values first
         let velocity = self.base().get_velocity();
         let mut is_on_floor = self.base().is_on_floor();
+        let mut body = self.to_gd().upcast::<CharacterBody2D>();
 
-        self.update_drop_through(is_on_floor, delta);
-        if self.drop_through_timer > 0.0 {
+        self.drop_controller.update(
+            &mut body,
+            is_on_floor,
+            delta,
+            input_adapter::is_drop_through_pressed(&self.input_actions),
+        );
+        if self.drop_controller.is_active() {
             is_on_floor = false;
         }
 
-        // Collect input
         let movement_input = input_adapter::collect_movement_input(&self.input_actions);
-
-        // Process movement and get new velocity and state
-        let new_velocity = if let Some(movement) = &mut self.movement {
-            movement.physics_process(velocity, is_on_floor, delta, movement_input)
-        } else {
+        let Some(movement) = self.movement.as_mut() else {
             return;
         };
+        let new_velocity = movement.physics_process(velocity, is_on_floor, delta, movement_input);
 
-        // Update physics
         self.base_mut().set_velocity(new_velocity);
         self.base_mut().move_and_slide();
 
         let resolved_velocity = self.base().get_velocity();
         let is_on_floor_after_move = self.base().is_on_floor();
-        let state = if let Some(movement) = &mut self.movement {
+        let (state, is_walking) = {
+            let Some(movement) = self.movement.as_mut() else {
+                return;
+            };
             movement.post_physics_update(is_on_floor_after_move);
-            movement.state
-        } else {
-            return;
+            (
+                movement.state,
+                movement.is_walking_or_pressing(resolved_velocity, movement_input.direction),
+            )
         };
 
         if self.check_hazard_collision() {
@@ -110,17 +120,14 @@ impl ICharacterBody2D for Player {
             return;
         }
 
-        // Push rigid bodies
-        self.push_rigid_bodies();
+        push::push_rigid_bodies(
+            &mut body,
+            input_adapter::get_push_direction(&self.input_actions),
+            PUSH_SPEED,
+        );
 
-        // Update animation
         let visual_direction_x =
             animation::resolve_visual_direction_x(movement_input.direction, resolved_velocity.x);
-        let is_walking = self
-            .movement
-            .as_ref()
-            .map(|m| m.is_walking_or_pressing(resolved_velocity, movement_input.direction))
-            .unwrap_or(false);
         animation::update_sprite_direction(&mut self.sprite, visual_direction_x);
         let anim = animation::get_animation_name(
             state,
@@ -130,6 +137,11 @@ impl ICharacterBody2D for Player {
         );
         animation::play_animation_if_changed(&mut self.sprite, anim);
     }
+}
+
+fn project_gravity() -> f32 {
+    let settings = ProjectSettings::singleton();
+    settings.get("physics/2d/default_gravity").to::<f64>() as f32
 }
 
 #[godot_api]
@@ -149,44 +161,13 @@ impl Player {
         }
     }
 
-    fn update_drop_through(&mut self, is_on_floor: bool, delta: f64) {
-        if is_on_floor
-            && self.drop_through_timer <= 0.0
-            && self.is_standing_on_moving_platform()
-            && input_adapter::is_drop_through_pressed(&self.input_actions)
-        {
-            self.start_drop_through();
-        }
-
-        if self.drop_through_timer > 0.0 {
-            self.drop_through_timer -= delta;
-            if self.drop_through_timer <= 0.0 {
-                self.stop_drop_through();
-            }
-        }
-    }
-
-    fn start_drop_through(&mut self) {
-        self.drop_through_timer = DROP_THROUGH_DURATION;
-        self.base_mut()
-            .set_collision_mask_value(MOVING_PLATFORM_LAYER, false);
-    }
-
-    fn stop_drop_through(&mut self) {
-        self.drop_through_timer = 0.0;
-        let mask_default = self.moving_platform_mask_default;
-        self.base_mut()
-            .set_collision_mask_value(MOVING_PLATFORM_LAYER, mask_default);
-    }
-
     pub(crate) fn reset_for_room_transition(&mut self) {
         if let Some(movement) = &mut self.movement {
             movement.reset_transient_state();
         }
 
-        if self.drop_through_timer > 0.0 {
-            self.stop_drop_through();
-        }
+        let mut body = self.to_gd().upcast::<CharacterBody2D>();
+        self.drop_controller.reset(&mut body);
     }
 
     fn start_death(&mut self) {
@@ -202,111 +183,14 @@ impl Player {
 
     fn check_hazard_collision(&mut self) -> bool {
         let collision_count = self.base().get_slide_collision_count();
-        for i in 0..collision_count {
-            let Some(collision) = self.base_mut().get_slide_collision(i) else {
+        for index in 0..collision_count {
+            let Some(collision) = self.base_mut().get_slide_collision(index) else {
                 continue;
             };
-            if self.is_hazard_collision(&collision) {
+            if hazard::is_hazard_collision(&collision, HAZARD_LAYER, &HAZARD_TILEMAP_PREFIXES) {
                 return true;
             }
         }
         false
-    }
-
-    fn is_hazard_collision(&self, collision: &Gd<KinematicCollision2D>) -> bool {
-        let Some(mut collider) = collision.get_collider() else {
-            return false;
-        };
-
-        if let Ok(body) = collider.clone().try_cast::<CollisionObject2D>() {
-            return body.get_collision_layer_value(HAZARD_LAYER);
-        }
-
-        if collider.has_method("get_collision_layer_value") {
-            let layer = Variant::from(HAZARD_LAYER);
-            return collider
-                .call("get_collision_layer_value", &[layer])
-                .to::<bool>();
-        }
-
-        if collider.has_method("get_collision_layer") {
-            let layer_bits = collider.call("get_collision_layer", &[]).to::<u32>();
-            return (layer_bits & (1_u32 << (HAZARD_LAYER - 1))) != 0;
-        }
-
-        if let Ok(node) = collider.try_cast::<Node>() {
-            if self.is_hazard_tilemap_node(&node) {
-                return true;
-            }
-            if let Some(parent) = node.get_parent() {
-                if self.is_hazard_tilemap_node(&parent) {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-
-    fn is_hazard_tilemap_node(&self, node: &Gd<Node>) -> bool {
-        let name = node.get_name().to_string();
-        HAZARD_TILEMAP_PREFIXES
-            .iter()
-            .any(|prefix| name.starts_with(prefix))
-    }
-
-    fn is_standing_on_moving_platform(&mut self) -> bool {
-        let Some(collision) = self.base_mut().get_last_slide_collision() else {
-            return false;
-        };
-
-        let normal = collision.get_normal();
-        let is_floor_hit = normal.dot(Vector2::new(0.0, -1.0)) > 0.7;
-        if !is_floor_hit {
-            return false;
-        }
-
-        let Some(collider) = collision.get_collider() else {
-            return false;
-        };
-
-        if let Ok(body) = collider.try_cast::<CollisionObject2D>() {
-            body.get_collision_layer_value(MOVING_PLATFORM_LAYER)
-        } else {
-            false
-        }
-    }
-
-    /// Push rigid bodies we collided with during move_and_slide
-    fn push_rigid_bodies(&mut self) {
-        let input_dir = input_adapter::get_push_direction(&self.input_actions);
-        if input_dir.abs() < 0.01 {
-            return;
-        }
-
-        let collision_count = self.base().get_slide_collision_count();
-        for i in 0..collision_count {
-            let Some(collision) = self.base_mut().get_slide_collision(i) else {
-                continue;
-            };
-            let Some(collider) = collision.get_collider() else {
-                continue;
-            };
-            if let Ok(mut rigid_body) = collider.try_cast::<RigidBody2D>() {
-                let crate_vel = rigid_body.get_linear_velocity();
-                rigid_body.set_linear_velocity(Vector2::new(input_dir * PUSH_SPEED, crate_vel.y));
-
-                // If crate velocity was near zero despite pushing, it's stuck.
-                // Force move the crate by directly adjusting its position.
-                if crate_vel.x.abs() < 1.0 {
-                    let current_pos = rigid_body.get_global_position();
-                    let push_delta = input_dir.signum() * 0.5;
-                    rigid_body.set_global_position(Vector2::new(
-                        current_pos.x + push_delta,
-                        current_pos.y,
-                    ));
-                }
-            }
-        }
     }
 }

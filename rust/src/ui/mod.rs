@@ -3,3 +3,4 @@ mod main_menu;
 mod pause_menu;
 mod star_counter;
 mod world_map;
+mod world_map_model;

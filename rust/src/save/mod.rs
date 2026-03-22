@@ -1,43 +1,38 @@
-//! Save system module.
-//!
-//! Split into layers:
-//! - `checkpoint_store`: Checkpoint slot storage and pending-load tracking (game-agnostic)
-//! - `entity_state`: Game-specific entity state persistence (keys, locks)
-//! - `service`: Event-driven save handler (Godot node)
-
-mod checkpoint_store;
-mod entity_state;
-mod exploration;
-mod service;
-
 use godot::prelude::*;
 
-// Re-export checkpoint save storage
-pub use checkpoint_store::{
-    DEFAULT_SAVE_SLOT, SaveSnapshot, has_save, peek_checkpoint, queue_load, save_checkpoint,
-    take_pending_load,
+use crate::core::progress;
+#[cfg(test)]
+use crate::core::progress::PersistentEntityKind;
+
+pub use crate::core::progress::{
+    DEFAULT_SAVE_SLOT, clear_pending_load, get_star_count, has_save, is_room_explored,
+    list_explored_rooms, mark_room_explored, queue_load,
 };
 
-// Re-export entity state management
-pub use entity_state::{
-    get_star_count, is_key_collected, is_lock_unlocked, is_star_collected, mark_key_collected,
-    mark_lock_unlocked, mark_star_collected,
-};
-
-// Re-export exploration state
-pub use exploration::{is_room_explored, list_explored_rooms, mark_room_explored};
-
-// Re-export save service
-pub use service::SaveService;
-
-/// Reset all game state (for new game).
-pub fn reset_all() {
-    checkpoint_store::reset();
-    entity_state::reset();
-    exploration::reset();
+#[cfg(test)]
+pub fn mark_lock_unlocked(room: (i32, i32), position: Vector2) {
+    let _marked = progress::mark_entity(PersistentEntityKind::Lock, room, position);
 }
 
-/// Godot-facing helper for accessing save state from scenes/scripts.
+#[cfg(test)]
+pub fn is_lock_unlocked(room: (i32, i32), position: Vector2) -> bool {
+    progress::has_entity(PersistentEntityKind::Lock, room, position)
+}
+
+#[cfg(test)]
+pub fn mark_key_collected(room: (i32, i32), position: Vector2) {
+    let _marked = progress::mark_entity(PersistentEntityKind::Key, room, position);
+}
+
+#[cfg(test)]
+pub fn is_key_collected(room: (i32, i32), position: Vector2) -> bool {
+    progress::has_entity(PersistentEntityKind::Key, room, position)
+}
+
+pub fn reset_all() {
+    progress::reset_all();
+}
+
 #[derive(GodotClass)]
 #[class(base=RefCounted)]
 pub struct SaveApi {
@@ -54,27 +49,21 @@ impl IRefCounted for SaveApi {
 
 #[godot_api]
 impl SaveApi {
-    /// Returns true if the given slot contains data.
     #[func]
     pub fn has_save(&self, slot: i64) -> bool {
         has_save(slot as usize)
     }
 
-    /// Queue loading the specified slot on the next game scene load.
-    ///
-    /// Returns false if the slot is empty.
     #[func]
     pub fn queue_load(&self, slot: i64) -> bool {
         queue_load(slot as usize)
     }
 
-    /// Clear any pending load flag without removing the saved data itself.
     #[func]
     pub fn clear_pending_load(&self) {
-        checkpoint_store::clear_pending_load();
+        clear_pending_load();
     }
 
-    /// Returns explored room coordinates for world map display.
     #[func]
     pub fn get_explored_rooms(&self) -> Array<Vector2i> {
         let mut rooms = Array::new();
@@ -84,7 +73,6 @@ impl SaveApi {
         rooms
     }
 
-    /// Returns whether a room has been explored.
     #[func]
     pub fn is_room_explored(&self, room: Vector2i) -> bool {
         crate::save::is_room_explored((room.x, room.y))
@@ -97,25 +85,20 @@ mod tests {
 
     #[test]
     fn reset_all_clears_everything() {
-        // Save a checkpoint
-        save_checkpoint(DEFAULT_SAVE_SLOT, (1, 2), Vector2::new(10.0, 20.0));
-        assert!(has_save(DEFAULT_SAVE_SLOT));
+        progress::save_checkpoint(DEFAULT_SAVE_SLOT, (1, 2), Vector2::new(10.0, 20.0));
+        assert!(progress::has_save(DEFAULT_SAVE_SLOT));
 
-        // Mark some entity states
         mark_key_collected((1, 2), Vector2::new(30.0, 40.0));
         mark_lock_unlocked((1, 2), Vector2::new(50.0, 60.0));
         assert!(is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
         assert!(is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
 
-        // Mark exploration state
         mark_room_explored((2, 3));
         assert!(is_room_explored((2, 3)));
 
-        // Reset everything
         reset_all();
 
-        // Verify all state is cleared
-        assert!(!has_save(DEFAULT_SAVE_SLOT));
+        assert!(!progress::has_save(DEFAULT_SAVE_SLOT));
         assert!(!is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
         assert!(!is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
         assert!(!is_room_explored((2, 3)));

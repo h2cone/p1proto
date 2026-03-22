@@ -1,5 +1,6 @@
 use godot::prelude::*;
 
+mod core;
 mod entity;
 mod game;
 mod player;

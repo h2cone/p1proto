@@ -1,17 +1,17 @@
-use godot::classes::{Area2D, IStaticBody2D, StaticBody2D};
+use godot::classes::{Area2D, IStaticBody2D, Node, StaticBody2D};
 use godot::prelude::*;
 
+use crate::core::progress::PersistentEntityKind;
+
+use super::persistence::{PLAIN_KEY_GROUP, has_persistent_entity, mark_persistent_entity};
 use super::plain_key::PlainKey;
-use crate::save;
 
 #[derive(GodotClass)]
 #[class(base=StaticBody2D)]
 pub struct PlainLock {
     #[base]
     base: Base<StaticBody2D>,
-
     detect_area: OnReady<Gd<Area2D>>,
-
     #[export]
     room_coords: Vector2i,
 }
@@ -27,16 +27,15 @@ impl IStaticBody2D for PlainLock {
     }
 
     fn ready(&mut self) {
+        let pos = self.base().get_global_position();
+        let node = self.to_gd().upcast::<Node>();
         godot_print!(
             "[PlainLock] ready at {:?}, room {:?}",
-            self.base().get_global_position(),
+            pos,
             self.room_coords
         );
 
-        // Check if already unlocked (query save state for restoration)
-        let room = (self.room_coords.x, self.room_coords.y);
-        let pos = self.base().get_global_position();
-        if save::is_lock_unlocked(room, pos) {
+        if has_persistent_entity(PersistentEntityKind::Lock, &node, self.room_coords, pos) {
             godot_print!("[PlainLock] already unlocked, queue_free");
             self.base_mut().queue_free();
             return;
@@ -47,30 +46,24 @@ impl IStaticBody2D for PlainLock {
             .signals()
             .body_entered()
             .connect_other(&plain_lock, Self::on_body_entered);
-        godot_print!("[PlainLock] body_entered signal connected");
     }
 }
 
 #[godot_api]
 impl PlainLock {
-    /// Signal emitted when lock is unlocked.
-    /// Parameters: room_coords (Vector2i), position (Vector2)
     #[signal]
     pub(crate) fn lock_unlocked(room_coords: Vector2i, position: Vector2);
 
     #[func]
     fn on_body_entered(&mut self, _body: Gd<Node2D>) {
         if let Some(mut key) = self.find_collected_key() {
-            godot_print!("[PlainLock] found collected key, unlocking");
             self.unlock(&mut key);
-        } else {
-            godot_print!("[PlainLock] no collected key found, ignoring");
         }
     }
 
     fn find_collected_key(&self) -> Option<Gd<PlainKey>> {
         let tree = self.base().get_tree();
-        let keys = tree.get_nodes_in_group("plain_keys");
+        let keys = tree.get_nodes_in_group(PLAIN_KEY_GROUP);
 
         for node in keys.iter_shared() {
             if let Ok(key) = node.try_cast::<PlainKey>() {
@@ -83,15 +76,12 @@ impl PlainLock {
     }
 
     fn unlock(&mut self, key: &mut Gd<PlainKey>) {
-        godot_print!("[PlainLock] unlocked");
-
-        // Copy values before emitting signal to avoid borrow conflict
         let room_coords = self.room_coords;
         let pos = self.base().get_global_position();
+        let node = self.to_gd().upcast::<Node>();
 
-        // Emit signal for SaveService to handle persistence
         self.signals().lock_unlocked().emit(room_coords, pos);
-
+        let _marked = mark_persistent_entity(PersistentEntityKind::Lock, &node, room_coords, pos);
         key.bind_mut().consume();
         self.base_mut().queue_free();
     }
