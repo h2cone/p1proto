@@ -1,52 +1,29 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+`rust/` contains the Godot GDExtension crate. Core gameplay state lives in `rust/src/core`, runtime orchestration in `rust/src/game`, player behavior in `rust/src/player`, entities in `rust/src/entity`, room loading in `rust/src/rooms`, save logic in `rust/src/save`, and Rust-backed UI in `rust/src/ui`.
 
-- `godot/`: Godot 4.5 project (`project.godot`), scenes and assets.
-  - `ui/`: menus and HUD scenes (entry point is `ui/main_menu.tscn`).
-  - `entity/`, `player/`: gameplay scenes used by levels.
-  - `pipeline/ldtk/`: LDtk source + generated room scenes (`levels/Room_{x}_{y}.scn`).
-  - `.godot/`: editor cache (do not commit).
-- `rust/`: Rust GDExtension (`cdylib`) loaded by `godot/rust.gdextension`.
-  - `src/player/`, `src/entity/`, `src/rooms/`, `src/save/`, `src/ui/`, `src/game/`
-- `screenshots/`: gifs/images referenced by docs (e.g. `screenshots/run.gif`).
+`godot/` is the Godot 4 project. Scene files live under folders such as `godot/entity/`, `godot/player/`, and `godot/ui/`. Content pipelines are under `godot/pipeline/ldtk` and `godot/pipeline/aseprite`. Third-party add-ons are vendored in `godot/addons/`.
+
+Use `scripts/` for local workflow automation, `docs/` for supporting notes, and `screenshots/` for repo media. Do not edit generated build output in `rust/target/` or `export/`.
 
 ## Build, Test, and Development Commands
-
-Run from the repo root:
-
-```bash
-cd rust
-cargo build            # build debug extension
-cargo build --release  # build optimized extension
-cargo test             # run Rust unit tests
-cargo test save::      # run save-system tests only
-```
-
-Run the game:
-
-```bash
-cd godot
-godot --path .         # or open `godot/` in the Godot editor and press F5
-```
+- `./scripts/run.ps1` builds the debug Rust extension and launches the Godot project.
+- `./scripts/run.ps1 -Build Release` launches Godot against a release Rust build.
+- `./scripts/run.ps1 -Editor` opens the Godot editor instead of the game.
+- `cd rust; cargo test --locked` runs the Rust unit tests. Verified in this repo.
+- `cd rust; cargo fmt --check` verifies Rust formatting. Verified in this repo.
+- `./scripts/export.ps1` creates a Windows export in `export/` and checks export preset/template setup.
+- `./scripts/update_gdext.ps1 -DryRun` previews a pinned `gdext` revision update.
 
 ## Coding Style & Naming Conventions
-
-- Rust: format with `cargo fmt` (rustfmt; 4-space indentation); use `snake_case` for modules/files and `PascalCase` for types.
-- Godot: keep `.tscn`/`.gd` in `snake_case`; prefer placing new gameplay scenes under `godot/entity/` and UI under `godot/ui/`.
-- Keep Rust↔Godot boundaries explicit: Rust classes exposed to Godot live under `rust/src/` and are loaded via `godot/rust.gdextension`.
+Rust follows standard `rustfmt` output: 4-space indentation, `snake_case` functions/modules, and `PascalCase` types. Keep gameplay logic in Rust and use Godot scenes/resources as data and wiring. Match existing asset names such as `collectible_star.tscn` and `world_map_model.rs`. Preserve the current tab-indented style in existing GDScript files.
 
 ## Testing Guidelines
-
-- Tests use Rust’s built-in test harness (`#[test]`) and live next to the code (common areas: `rust/src/save/*`, `rust/src/rooms/*`).
-- Prefer small, deterministic unit tests over integration-style tests for gameplay logic.
-- No formal coverage target; add tests for bugfixes and new logic in `save/` and `rooms/` where feasible.
+Tests live inline with Rust modules under `#[cfg(test)]`; there is no separate integration test suite yet. Add or update unit tests when changing movement, persistence, room transitions, or other deterministic logic. Prefer tests that avoid needing a live Godot runtime when possible.
 
 ## Commit & Pull Request Guidelines
+Recent history uses Conventional Commits, often with scopes: `feat(player): ...`, `fix: ...`, `refactor(save): ...`, `chore: ...`. Keep commits small and imperative. PRs should summarize gameplay impact, list verification steps, link related issues, and include screenshots or GIFs for UI, scene, or level changes. Call out asset-pipeline or export-tooling changes explicitly.
 
-- Commit messages generally follow Conventional Commits: `feat: ...`, `fix: ...`, `refactor: ...`, `docs: ...`, `chore: ...` (optional scope like `feat(glicol): ...`).
-- PRs should include: a brief summary, run instructions, and updated media in `screenshots/` for visible changes.
-
-## Notes for Contributors
-
-- This repo’s `.gitignore` ignores `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`. Remove those entries if you want this guide committed.
+## Configuration Notes
+Keep both `cargo` and `godot` on `PATH`. Windows exports also require matching Godot export templates. When updating `godot-rust`, prefer `scripts/update_gdext.ps1` so `rust/Cargo.toml` and `rust/Cargo.lock` stay in sync.
