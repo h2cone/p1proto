@@ -126,7 +126,6 @@ impl IAnimatableBody2D for CrumblingPlatform {
 
 #[godot_api]
 impl CrumblingPlatform {
-    /// Called when a body enters the landing detector area.
     #[func]
     fn on_body_entered(&mut self, body: Gd<Node2D>) {
         if body.is_class("Player") {
@@ -134,7 +133,6 @@ impl CrumblingPlatform {
         }
     }
 
-    /// Called when a body exits the landing detector area.
     #[func]
     fn on_body_exited(&mut self, body: Gd<Node2D>) {
         if body.is_class("Player") {
@@ -142,7 +140,6 @@ impl CrumblingPlatform {
         }
     }
 
-    /// Called when a body lands on the platform.
     fn on_body_landed(&mut self) {
         if self.state == CrumbleState::Idle && !self.body_on_platform {
             self.body_on_platform = true;
@@ -150,13 +147,11 @@ impl CrumblingPlatform {
         }
     }
 
-    /// Called when a body leaves the platform.
     fn on_body_left(&mut self) {
         self.body_on_platform = false;
         // Don't reset timer - once triggered, the platform will crumble
     }
 
-    /// Called when animation finishes.
     #[func]
     fn on_animation_finished(&mut self) {
         match self.state {
@@ -170,14 +165,12 @@ impl CrumblingPlatform {
         }
     }
 
-    /// Start the shaking phase.
     fn start_shaking(&mut self) {
         self.state = CrumbleState::Shaking;
         self.sprite.set_animation("shake");
         self.sprite.play();
     }
 
-    /// Start the crumbling phase.
     fn start_crumbling(&mut self) {
         self.state = CrumbleState::Crumbling;
 
@@ -189,21 +182,12 @@ impl CrumblingPlatform {
         self.sprite.play();
     }
 
-    /// Called when crumble animation finishes.
     fn finish_crumble(&mut self) {
         self.state = CrumbleState::Fallen;
         self.timer = 0.0;
-
-        // Hide the sprite
         self.sprite.set_visible(false);
-
-        if self.respawn_time <= 0.0 {
-            // No respawn, optionally queue_free
-            // self.base_mut().queue_free();
-        }
     }
 
-    /// Respawn the platform to its initial state.
     fn respawn(&mut self) {
         self.state = CrumbleState::Idle;
         self.timer = 0.0;
@@ -225,7 +209,6 @@ impl CrumblingPlatform {
         matches!(self.state, CrumbleState::Idle | CrumbleState::Shaking)
     }
 
-    /// Get the current state as a string (for debugging).
     #[func]
     pub fn get_state_name(&self) -> GString {
         match self.state {

@@ -6,7 +6,6 @@ use godot::prelude::*;
 
 use crate::entity::portal::TeleportPortal;
 
-/// Find Portal node in room's Entities layer.
 pub fn find_portal_in_room(room: &Gd<Node2D>, entity_layer: &str) -> Option<Gd<TeleportPortal>> {
     let entities = room.get_node_or_null(entity_layer)?;
     for child in entities.get_children().iter_shared() {
@@ -17,7 +16,6 @@ pub fn find_portal_in_room(room: &Gd<Node2D>, entity_layer: &str) -> Option<Gd<T
     None
 }
 
-/// Connect portal's teleport_requested signal to a target node's method.
 pub fn connect_portal_signal<T, Declarer>(
     portal: &Gd<TeleportPortal>,
     target: &Gd<T>,
@@ -32,7 +30,6 @@ pub fn connect_portal_signal<T, Declarer>(
     godot_print!("[PortalConnector] connected portal teleport signal");
 }
 
-/// Find and connect portal in a room to a handler.
 /// Returns true if a portal was found and connected.
 pub fn connect_room_portal<T, Declarer>(
     room: &Gd<Node2D>,

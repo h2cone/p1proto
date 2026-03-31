@@ -1,7 +1,6 @@
 use godot::classes::{AnimatedSprite2D, CollisionShape2D, IStaticBody2D, StaticBody2D};
 use godot::prelude::*;
 
-/// Door states for the switch door state machine
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DoorState {
     Closed,
@@ -79,11 +78,9 @@ impl SwitchDoor {
     #[signal]
     fn animation_finished();
 
-    /// Signal emitted when the door fully opens
     #[signal]
     fn door_opened();
 
-    /// Signal emitted when the door fully closes
     #[signal]
     fn door_closed();
 
@@ -117,7 +114,6 @@ impl SwitchDoor {
         }
     }
 
-    /// Toggle the door state
     #[func]
     pub fn toggle(&mut self) {
         match self.state {
@@ -126,19 +122,16 @@ impl SwitchDoor {
         }
     }
 
-    /// Check if the door is currently open
     #[func]
     pub fn is_open(&self) -> bool {
         self.state == DoorState::Open
     }
 
-    /// Check if the door is currently closed
     #[func]
     pub fn is_closed(&self) -> bool {
         self.state == DoorState::Closed
     }
 
-    /// Called when animation finishes
     #[func]
     fn on_animation_finished(&mut self) {
         match self.state {

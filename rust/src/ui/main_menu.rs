@@ -5,7 +5,6 @@ use godot::{
 
 use crate::save::{self, DEFAULT_SAVE_SLOT};
 
-/// MainMenu manages the game's main menu UI and handles button interactions
 #[derive(GodotClass)]
 #[class(base=Control)]
 pub struct MainMenu {
@@ -42,7 +41,6 @@ impl IControl for MainMenu {
 
 #[godot_api]
 impl MainMenu {
-    /// Connect signals from UI buttons to handler methods
     fn connect_button_signals(&mut self) {
         let main_menu = self.to_gd();
 
@@ -100,13 +98,11 @@ impl MainMenu {
         save::has_save(DEFAULT_SAVE_SLOT)
     }
 
-    /// Try to get the Continue button reference if it exists in the scene
     fn find_continue_button(&self) -> Option<Gd<Button>> {
         self.base()
             .try_get_node_as::<Button>("VBoxContainer/ContinueButton")
     }
 
-    /// Enable/disable Continue based on whether a save exists
     fn update_continue_button_state(&mut self) {
         let has_save = self.has_checkpoint_save();
 
@@ -115,7 +111,6 @@ impl MainMenu {
         }
     }
 
-    /// Handle quit button press - exit the application
     #[func]
     fn on_quit_button_pressed(&mut self) {
         godot_print!("[MainMenu] quit button pressed");

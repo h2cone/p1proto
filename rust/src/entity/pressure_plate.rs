@@ -9,10 +9,8 @@ pub struct PressurePlate {
     #[base]
     base: Base<Area2D>,
 
-    /// Is the pressure plate currently pressed?
     pressed: bool,
 
-    /// AnimatedSprite2D node reference
     sprite: OnReady<Gd<AnimatedSprite2D>>,
 
     /// Room coordinates of the target SwitchDoor
@@ -37,11 +35,9 @@ impl IArea2D for PressurePlate {
     }
 
     fn ready(&mut self) {
-        // Set initial animation to inactive
         self.sprite.set_animation("inactive");
         self.sprite.stop();
 
-        // Connect signals
         self.signals()
             .body_entered()
             .connect_self(Self::on_body_entered);
@@ -54,7 +50,6 @@ impl IArea2D for PressurePlate {
 
 #[godot_api]
 impl PressurePlate {
-    /// Called when a body enters the pressure plate area
     #[func]
     fn on_body_entered(&mut self, _body: Gd<Node2D>) {
         // Only activate if not already pressed
@@ -71,7 +66,6 @@ impl PressurePlate {
         }
     }
 
-    /// Called when a body exits the pressure plate area
     #[func]
     fn on_body_exited(&mut self, _body: Gd<Node2D>) {
         // Defer the check to ensure physics state is fully updated
@@ -95,13 +89,11 @@ impl PressurePlate {
         }
     }
 
-    /// Check if the pressure plate is currently pressed
     #[func]
     pub fn is_pressed(&self) -> bool {
         self.pressed
     }
 
-    /// Get the target SwitchDoor if configured
     fn get_target_door(&self) -> Option<Gd<SwitchDoor>> {
         if self.target_id.is_empty() {
             return None;

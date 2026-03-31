@@ -17,10 +17,8 @@ pub struct StarCounter {
 
     label: OnReady<Gd<Label>>,
 
-    /// Cached count to detect changes
     cached_count: usize,
 
-    /// Current tween for fade animations
     current_tween: Option<Gd<Tween>>,
 }
 
@@ -58,7 +56,7 @@ impl IControl for StarCounter {
 #[godot_api]
 impl StarCounter {
     fn update_display(&mut self) {
-        self.label.set_text(&format!("{}", self.cached_count));
+        self.label.set_text(&self.cached_count.to_string());
     }
 
     fn show_briefly(&mut self) {

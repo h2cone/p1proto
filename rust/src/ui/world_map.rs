@@ -185,15 +185,10 @@ impl WorldMap {
     }
 
     fn is_pause_menu_visible(&self) -> bool {
-        let Some(parent) = self.base().get_parent() else {
-            return false;
-        };
-        let Some(pause_menu) = parent.get_node_or_null(PAUSE_MENU_NODE) else {
-            return false;
-        };
-        if let Ok(control) = pause_menu.try_cast::<Control>() {
-            return control.is_visible();
-        }
-        false
+        self.base()
+            .get_parent()
+            .and_then(|parent| parent.get_node_or_null(PAUSE_MENU_NODE))
+            .and_then(|node| node.try_cast::<Control>().ok())
+            .is_some_and(|control| control.is_visible())
     }
 }

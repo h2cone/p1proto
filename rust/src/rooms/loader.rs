@@ -17,11 +17,8 @@ pub struct RoomLoader {
 }
 
 impl RoomLoader {
-    /// Create a new room loader
-    ///
-    /// # Arguments
-    /// * `scene_path_pattern` - Pattern for room scene paths, e.g., "res://pipeline/ldtk/levels/Room_{x}_{y}.scn"
-    ///                          Use {x} and {y} as placeholders for grid coordinates
+    /// Base path pattern for room scenes, e.g. "res://pipeline/ldtk/levels/Room_{x}_{y}.scn".
+    /// Use {x} and {y} as placeholders for grid coordinates.
     pub fn new(scene_path_pattern: String) -> Self {
         Self {
             scene_cache: HashMap::new(),
@@ -29,8 +26,6 @@ impl RoomLoader {
         }
     }
 
-    /// Load a room scene by grid coordinates
-    ///
     /// Returns the loaded PackedScene, caching it for future requests.
     /// Returns None if the scene file doesn't exist.
     pub fn load_room_scene(&mut self, room_coords: (i32, i32)) -> Option<Gd<PackedScene>> {
@@ -59,37 +54,26 @@ impl RoomLoader {
         }
     }
 
-    /// Instantiate a room scene as a Node2D
-    ///
-    /// This loads the scene if needed and creates an instance ready to add to the scene tree.
     pub fn instantiate_room(&mut self, room_coords: (i32, i32)) -> Option<Gd<Node2D>> {
         let scene = self.load_room_scene(room_coords)?;
-
-        match scene.instantiate() {
-            Some(instance) => {
-                // Room scenes should have Node2D as root
-                match instance.try_cast::<Node2D>() {
-                    Ok(node) => Some(node),
-                    Err(instance) => {
-                        godot_error!(
-                            "Room scene root at {:?} is not a Node2D (got {})",
-                            room_coords,
-                            instance.get_class()
-                        );
-                        None
-                    }
-                }
-            }
-            None => {
-                godot_error!("Failed to instantiate room scene at {:?}", room_coords);
+        let instance = scene.instantiate().or_else(|| {
+            godot_error!("Failed to instantiate room scene at {:?}", room_coords);
+            None
+        })?;
+        match instance.try_cast::<Node2D>() {
+            Ok(node) => Some(node),
+            Err(instance) => {
+                godot_error!(
+                    "Room scene root at {:?} is not a Node2D (got {})",
+                    room_coords,
+                    instance.get_class()
+                );
                 None
             }
         }
     }
 
-    /// Check if a room exists at the given coordinates
-    ///
-    /// This is useful for validating transitions before attempting to load.
+    /// Useful for validating transitions before attempting to load.
     pub fn room_exists(&mut self, room_coords: (i32, i32)) -> bool {
         self.load_room_scene(room_coords).is_some()
     }

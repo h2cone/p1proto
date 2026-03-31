@@ -5,7 +5,6 @@ use godot::{
 
 use crate::save;
 
-/// PauseMenu manages the game's pause menu UI and handles pause/resume functionality
 #[derive(GodotClass)]
 #[class(base=Control)]
 pub struct PauseMenu {
@@ -55,7 +54,6 @@ impl IControl for PauseMenu {
 
 #[godot_api]
 impl PauseMenu {
-    /// Connect signals from UI buttons to handler methods
     fn connect_button_signals(&mut self) {
         let pause_menu = self.to_gd();
 
@@ -70,7 +68,6 @@ impl PauseMenu {
             .connect_other(&pause_menu, Self::on_quit_button_pressed);
     }
 
-    /// Toggle pause state - show/hide menu and pause/unpause game
     fn toggle_pause(&mut self) {
         let is_visible = self.base().is_visible();
         let new_state = !is_visible;
@@ -92,23 +89,17 @@ impl PauseMenu {
 
     fn update_star_display(&mut self) {
         let count = save::get_star_count();
-        self.star_label.set_text(&format!("{}", count));
+        self.star_label.set_text(&count.to_string());
     }
 
     fn is_world_map_visible(&self) -> bool {
-        let Some(parent) = self.base().get_parent() else {
-            return false;
-        };
-        let Some(world_map) = parent.get_node_or_null("WorldMap") else {
-            return false;
-        };
-        let Ok(control) = world_map.try_cast::<Control>() else {
-            return false;
-        };
-        control.is_visible()
+        self.base()
+            .get_parent()
+            .and_then(|parent| parent.get_node_or_null("WorldMap"))
+            .and_then(|node| node.try_cast::<Control>().ok())
+            .is_some_and(|control| control.is_visible())
     }
 
-    /// Handle resume button press - unpause and hide menu
     #[func]
     fn on_resume_button_pressed(&mut self) {
         godot_print!("[PauseMenu] resume button pressed");

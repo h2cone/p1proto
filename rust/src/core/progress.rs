@@ -156,14 +156,11 @@ impl ProgressRepository {
     }
 
     pub fn peek_checkpoint(&self, slot: SaveSlot) -> Option<SaveSnapshot> {
-        self.slots.get(slot).and_then(|slot_data| slot_data.clone())
+        self.slots.get(slot)?.clone()
     }
 
     pub fn has_save(&self, slot: SaveSlot) -> bool {
-        self.slots
-            .get(slot)
-            .and_then(|slot_data| slot_data.as_ref())
-            .is_some()
+        self.slots.get(slot).is_some_and(|s| s.is_some())
     }
 
     pub fn queue_load(&mut self, slot: SaveSlot) -> bool {
@@ -179,7 +176,7 @@ impl ProgressRepository {
     pub fn take_pending_load(&mut self) -> Option<SaveSnapshot> {
         let slot = self.pending_load_slot.take()?;
         self.ensure_slot(slot);
-        self.slots.get(slot).and_then(|slot_data| slot_data.clone())
+        self.slots.get(slot)?.clone()
     }
 
     pub fn clear_pending_load(&mut self) {

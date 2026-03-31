@@ -9,7 +9,6 @@ pub struct TeleportPortal {
     #[base]
     base: Base<Area2D>,
 
-    /// AnimatedSprite2D node reference
     sprite: OnReady<Gd<AnimatedSprite2D>>,
 
     /// Hint label shown when player is in range
@@ -23,7 +22,6 @@ pub struct TeleportPortal {
     #[export]
     destination_room: Vector2i,
 
-    /// Whether player is currently in portal area
     player_in_area: bool,
 }
 
@@ -65,7 +63,6 @@ impl IArea2D for TeleportPortal {
 
 #[godot_api]
 impl TeleportPortal {
-    /// Signal emitted when portal teleport is activated
     #[signal]
     pub(crate) fn teleport_requested(destination_room: Vector2i);
 

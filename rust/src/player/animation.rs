@@ -28,7 +28,6 @@ impl Default for AnimationNames {
     }
 }
 
-/// Determine animation name based on movement state and velocity.
 pub fn get_animation_name(
     state: MovementState,
     velocity: Vector2,
@@ -53,7 +52,6 @@ pub fn get_animation_name(
     }
 }
 
-/// Update sprite direction based on horizontal velocity.
 /// Flips the sprite horizontally when moving left/right.
 pub fn update_sprite_direction(sprite: &mut Gd<AnimatedSprite2D>, velocity_x: f32) {
     if !velocity_x.is_zero_approx() {
@@ -71,7 +69,6 @@ pub fn resolve_visual_direction_x(input_direction: f32, velocity_x: f32) -> f32 
     }
 }
 
-/// Play animation if different from current.
 pub fn play_animation_if_changed(sprite: &mut Gd<AnimatedSprite2D>, animation: &str) {
     let animation_name = StringName::from(animation);
     if !animation.is_empty() && animation_name != sprite.get_animation() {
