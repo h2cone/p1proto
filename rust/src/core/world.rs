@@ -35,13 +35,13 @@ impl SpawnResolver {
     }
 
     pub fn resolve(&self, mut room_exists: impl FnMut(RoomId) -> bool) -> SpawnPoint {
-        if let Some(snapshot) = progress::take_pending_load() {
-            if room_exists(snapshot.room) {
-                return SpawnPoint {
-                    room: snapshot.room,
-                    position: snapshot.position,
-                };
-            }
+        if let Some(snapshot) = progress::take_pending_load()
+            && room_exists(snapshot.room)
+        {
+            return SpawnPoint {
+                room: snapshot.room,
+                position: snapshot.position,
+            };
         }
 
         SpawnPoint {

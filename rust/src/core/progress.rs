@@ -140,6 +140,10 @@ impl ProgressRepository {
         }
     }
 
+    fn checkpoint(&self, slot: SaveSlot) -> Option<&SaveSnapshot> {
+        self.slots.get(slot).and_then(Option::as_ref)
+    }
+
     pub fn save_checkpoint(
         &mut self,
         slot: SaveSlot,
@@ -156,16 +160,15 @@ impl ProgressRepository {
     }
 
     pub fn peek_checkpoint(&self, slot: SaveSlot) -> Option<SaveSnapshot> {
-        self.slots.get(slot)?.clone()
+        self.checkpoint(slot).cloned()
     }
 
     pub fn has_save(&self, slot: SaveSlot) -> bool {
-        self.slots.get(slot).is_some_and(|s| s.is_some())
+        self.checkpoint(slot).is_some()
     }
 
     pub fn queue_load(&mut self, slot: SaveSlot) -> bool {
-        self.ensure_slot(slot);
-        if self.slots[slot].is_some() {
+        if self.has_save(slot) {
             self.pending_load_slot = Some(slot);
             true
         } else {
@@ -174,9 +177,9 @@ impl ProgressRepository {
     }
 
     pub fn take_pending_load(&mut self) -> Option<SaveSnapshot> {
-        let slot = self.pending_load_slot.take()?;
-        self.ensure_slot(slot);
-        self.slots.get(slot)?.clone()
+        self.pending_load_slot
+            .take()
+            .and_then(|slot| self.peek_checkpoint(slot))
     }
 
     pub fn clear_pending_load(&mut self) {
@@ -218,6 +221,14 @@ thread_local! {
     static REPOSITORY: RefCell<ProgressRepository> = RefCell::new(ProgressRepository::default());
 }
 
+fn with_repository<T>(f: impl FnOnce(&ProgressRepository) -> T) -> T {
+    REPOSITORY.with_borrow(f)
+}
+
+fn with_repository_mut<T>(f: impl FnOnce(&mut ProgressRepository) -> T) -> T {
+    REPOSITORY.with_borrow_mut(f)
+}
+
 pub fn make_legacy_key(room: RoomId, position: Vector2) -> PersistentKey {
     PersistentKey::Legacy {
         room,
@@ -227,7 +238,7 @@ pub fn make_legacy_key(room: RoomId, position: Vector2) -> PersistentKey {
 
 #[cfg(test)]
 pub fn save_checkpoint(slot: SaveSlot, room: RoomId, position: Vector2) -> SaveSnapshot {
-    REPOSITORY.with_borrow_mut(|repository| repository.save_checkpoint(slot, room, position, None))
+    with_repository_mut(|repository| repository.save_checkpoint(slot, room, position, None))
 }
 
 pub fn save_checkpoint_key(
@@ -236,29 +247,29 @@ pub fn save_checkpoint_key(
     position: Vector2,
     checkpoint_key: PersistentKey,
 ) -> SaveSnapshot {
-    REPOSITORY.with_borrow_mut(|repository| {
+    with_repository_mut(|repository| {
         repository.save_checkpoint(slot, room, position, Some(checkpoint_key))
     })
 }
 
 pub fn peek_checkpoint(slot: SaveSlot) -> Option<SaveSnapshot> {
-    REPOSITORY.with_borrow(|repository| repository.peek_checkpoint(slot))
+    with_repository(|repository| repository.peek_checkpoint(slot))
 }
 
 pub fn has_save(slot: SaveSlot) -> bool {
-    REPOSITORY.with_borrow(|repository| repository.has_save(slot))
+    with_repository(|repository| repository.has_save(slot))
 }
 
 pub fn queue_load(slot: SaveSlot) -> bool {
-    REPOSITORY.with_borrow_mut(|repository| repository.queue_load(slot))
+    with_repository_mut(|repository| repository.queue_load(slot))
 }
 
 pub fn take_pending_load() -> Option<SaveSnapshot> {
-    REPOSITORY.with_borrow_mut(ProgressRepository::take_pending_load)
+    with_repository_mut(ProgressRepository::take_pending_load)
 }
 
 pub fn clear_pending_load() {
-    REPOSITORY.with_borrow_mut(ProgressRepository::clear_pending_load);
+    with_repository_mut(ProgressRepository::clear_pending_load);
 }
 
 #[cfg(test)]
@@ -267,7 +278,7 @@ pub fn mark_entity(kind: PersistentEntityKind, room: RoomId, position: Vector2) 
 }
 
 pub fn mark_entity_key(kind: PersistentEntityKind, key: PersistentKey) -> bool {
-    REPOSITORY.with_borrow_mut(|repository| repository.mark_entity_key(kind, key))
+    with_repository_mut(|repository| repository.mark_entity_key(kind, key))
 }
 
 #[cfg(test)]
@@ -276,27 +287,27 @@ pub fn has_entity(kind: PersistentEntityKind, room: RoomId, position: Vector2) -
 }
 
 pub fn has_entity_key(kind: PersistentEntityKind, key: &PersistentKey) -> bool {
-    REPOSITORY.with_borrow(|repository| repository.has_entity_key(kind, key))
+    with_repository(|repository| repository.has_entity_key(kind, key))
 }
 
 pub fn mark_room_explored(room: RoomId) -> bool {
-    REPOSITORY.with_borrow_mut(|repository| repository.mark_room_explored(room))
+    with_repository_mut(|repository| repository.mark_room_explored(room))
 }
 
 pub fn is_room_explored(room: RoomId) -> bool {
-    REPOSITORY.with_borrow(|repository| repository.is_room_explored(room))
+    with_repository(|repository| repository.is_room_explored(room))
 }
 
 pub fn list_explored_rooms() -> Vec<RoomId> {
-    REPOSITORY.with_borrow(ProgressRepository::list_explored_rooms)
+    with_repository(ProgressRepository::list_explored_rooms)
 }
 
 pub fn get_star_count() -> usize {
-    REPOSITORY.with_borrow(ProgressRepository::star_count)
+    with_repository(ProgressRepository::star_count)
 }
 
 pub fn reset_all() {
-    REPOSITORY.with_borrow_mut(ProgressRepository::reset_all);
+    with_repository_mut(ProgressRepository::reset_all);
 }
 
 #[cfg(test)]

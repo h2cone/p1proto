@@ -110,8 +110,8 @@ impl PlayerRuntime {
     }
 
     pub(crate) fn reset_for_room_transition(&self, player: &mut Gd<CharacterBody2D>) {
-        let Ok(mut player_script) = player.clone().try_cast::<Player>() else {
-            godot_warn!("[RoomManager] player script not found - transition state not reset");
+        let Some(mut player_script) = Self::player_script(player, "transition state not reset")
+        else {
             return;
         };
 
@@ -138,13 +138,6 @@ impl PlayerRuntime {
     }
 
     fn queue_collision_restore(&mut self, layer: u32, mask: u32) {
-        if let Some(state) = &mut self.pending_collision_restore {
-            state.layer = layer;
-            state.mask = mask;
-            state.frames_remaining = 1;
-            return;
-        }
-
         self.pending_collision_restore = Some(CollisionRestore {
             layer,
             mask,
@@ -152,13 +145,28 @@ impl PlayerRuntime {
         });
     }
 
+    fn player_script(
+        player: &Gd<CharacterBody2D>,
+        missing_script_reason: &str,
+    ) -> Option<Gd<Player>> {
+        match player.clone().try_cast::<Player>() {
+            Ok(player_script) => Some(player_script),
+            Err(_) => {
+                godot_warn!(
+                    "[RoomManager] player script not found - {}",
+                    missing_script_reason
+                );
+                None
+            }
+        }
+    }
+
     fn connect_death_signal(
         &self,
         player: &Gd<CharacterBody2D>,
         room_manager: &Gd<GameRoomManager>,
     ) {
-        let Ok(player_script) = player.clone().try_cast::<Player>() else {
-            godot_warn!("[RoomManager] player script not found - death signal not connected");
+        let Some(player_script) = Self::player_script(player, "death signal not connected") else {
             return;
         };
 

@@ -26,25 +26,18 @@ impl RoomLoader {
         }
     }
 
-    /// Returns the loaded PackedScene, caching it for future requests.
-    /// Returns None if the scene file doesn't exist.
-    pub fn load_room_scene(&mut self, room_coords: (i32, i32)) -> Option<Gd<PackedScene>> {
-        // Check cache first
-        if let Some(scene) = self.scene_cache.get(&room_coords) {
-            return Some(scene.clone());
-        }
-
-        // Build the path from pattern
-        let path = self
-            .scene_path_pattern
+    fn scene_path(&self, room_coords: (i32, i32)) -> String {
+        self.scene_path_pattern
             .replace("{x}", &room_coords.0.to_string())
-            .replace("{y}", &room_coords.1.to_string());
+            .replace("{y}", &room_coords.1.to_string())
+    }
 
-        // Try to load the scene
+    fn load_scene_from_disk(&self, room_coords: (i32, i32)) -> Option<Gd<PackedScene>> {
+        let path = self.scene_path(room_coords);
+
         match try_load::<PackedScene>(&path) {
             Ok(scene) => {
                 godot_print!("[RoomLoader] loaded room scene: {}", path);
-                self.scene_cache.insert(room_coords, scene.clone());
                 Some(scene)
             }
             Err(_) => {
@@ -52,6 +45,18 @@ impl RoomLoader {
                 None
             }
         }
+    }
+
+    /// Returns the loaded PackedScene, caching it for future requests.
+    /// Returns None if the scene file doesn't exist.
+    pub fn load_room_scene(&mut self, room_coords: (i32, i32)) -> Option<Gd<PackedScene>> {
+        if let Some(scene) = self.scene_cache.get(&room_coords) {
+            return Some(scene.clone());
+        }
+
+        let scene = self.load_scene_from_disk(room_coords)?;
+        self.scene_cache.insert(room_coords, scene.clone());
+        Some(scene)
     }
 
     pub fn instantiate_room(&mut self, room_coords: (i32, i32)) -> Option<Gd<Node2D>> {
@@ -86,7 +91,6 @@ mod tests {
     #[test]
     fn test_scene_path_pattern_substitution() {
         let loader = RoomLoader::new("res://rooms/Room_{x}_{y}.scn".to_string());
-        // We can't actually test loading without Godot, but we can verify the pattern logic
-        assert_eq!(loader.scene_path_pattern, "res://rooms/Room_{x}_{y}.scn");
+        assert_eq!(loader.scene_path((3, 4)), "res://rooms/Room_3_4.scn");
     }
 }
