@@ -18,6 +18,44 @@ enum CrumbleState {
     Fallen,
 }
 
+/// Tracks whether crumble countdown has been armed by player contact.
+#[derive(Debug, Clone, Copy, Default)]
+struct CrumbleTrigger {
+    body_on_platform: bool,
+    countdown_started: bool,
+}
+
+impl CrumbleTrigger {
+    fn on_body_landed(&mut self, state: CrumbleState, timer: &mut f64) {
+        if state != CrumbleState::Idle {
+            return;
+        }
+
+        self.body_on_platform = true;
+        if !self.countdown_started {
+            self.countdown_started = true;
+            *timer = 0.0;
+        }
+    }
+
+    fn on_body_left(&mut self) {
+        self.body_on_platform = false;
+    }
+
+    fn advance(&self, timer: &mut f64, delta: f64, shake_delay: f64) -> bool {
+        if !self.countdown_started {
+            return false;
+        }
+
+        *timer += delta;
+        *timer >= shake_delay
+    }
+
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
 /// A platform that crumbles after the player steps on it.
 ///
 /// Behavior:
@@ -51,8 +89,8 @@ pub struct CrumblingPlatform {
     /// Area2D for detecting player landing.
     landing_detector: OnReady<Gd<Area2D>>,
 
-    /// Whether a body is currently on the platform.
-    body_on_platform: bool,
+    /// Whether crumble countdown has been armed by player contact.
+    trigger: CrumbleTrigger,
 }
 
 #[godot_api]
@@ -66,7 +104,7 @@ impl IAnimatableBody2D for CrumblingPlatform {
             timer: 0.0,
             sprite: OnReady::from_node("AnimatedSprite2D"),
             landing_detector: OnReady::from_node("LandingDetector"),
-            body_on_platform: false,
+            trigger: CrumbleTrigger::default(),
         }
     }
 
@@ -102,11 +140,11 @@ impl IAnimatableBody2D for CrumblingPlatform {
     fn physics_process(&mut self, delta: f64) {
         match self.state {
             CrumbleState::Idle => {
-                if self.body_on_platform {
-                    self.timer += delta;
-                    if self.timer >= self.shake_delay {
-                        self.start_shaking();
-                    }
+                if self
+                    .trigger
+                    .advance(&mut self.timer, delta, self.shake_delay)
+                {
+                    self.start_shaking();
                 }
             }
             CrumbleState::Shaking | CrumbleState::Crumbling => {
@@ -141,15 +179,11 @@ impl CrumblingPlatform {
     }
 
     fn on_body_landed(&mut self) {
-        if self.state == CrumbleState::Idle && !self.body_on_platform {
-            self.body_on_platform = true;
-            self.timer = 0.0;
-        }
+        self.trigger.on_body_landed(self.state, &mut self.timer);
     }
 
     fn on_body_left(&mut self) {
-        self.body_on_platform = false;
-        // Don't reset timer - once triggered, the platform will crumble
+        self.trigger.on_body_left();
     }
 
     #[func]
@@ -191,7 +225,7 @@ impl CrumblingPlatform {
     fn respawn(&mut self) {
         self.state = CrumbleState::Idle;
         self.timer = 0.0;
-        self.body_on_platform = false;
+        self.trigger.reset();
 
         // Re-enable collision
         self.base_mut()
@@ -217,5 +251,41 @@ impl CrumblingPlatform {
             CrumbleState::Crumbling => "crumbling".into(),
             CrumbleState::Fallen => "fallen".into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CrumbleState, CrumbleTrigger};
+
+    #[test]
+    fn leaving_before_delay_does_not_cancel_crumble() {
+        let mut trigger = CrumbleTrigger::default();
+        let mut timer = 99.0;
+
+        trigger.on_body_landed(CrumbleState::Idle, &mut timer);
+        assert!(trigger.body_on_platform);
+        assert!(trigger.countdown_started);
+        assert_eq!(timer, 0.0);
+
+        trigger.on_body_left();
+        assert!(!trigger.body_on_platform);
+
+        assert!(!trigger.advance(&mut timer, 0.29, 0.3));
+        assert!(trigger.advance(&mut timer, 0.01, 0.3));
+    }
+
+    #[test]
+    fn reentering_does_not_restart_locked_countdown() {
+        let mut trigger = CrumbleTrigger::default();
+        let mut timer = 0.0;
+
+        trigger.on_body_landed(CrumbleState::Idle, &mut timer);
+        assert!(!trigger.advance(&mut timer, 0.2, 0.3));
+
+        trigger.on_body_left();
+        trigger.on_body_landed(CrumbleState::Idle, &mut timer);
+        assert_eq!(timer, 0.2);
+        assert!(trigger.advance(&mut timer, 0.1, 0.3));
     }
 }

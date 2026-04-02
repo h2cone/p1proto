@@ -1,6 +1,6 @@
 # p1proto
 
-![Gameplay preview](screenshots/run.gif)
+![Gameplay preview](assets/run.gif)
 
 A compact 2D platformer prototype built with **Godot 4** and a **Rust GDExtension**. Room-to-room traversal, stateful world objects, lightweight save data, and gameplay logic on the Rust side.
 
