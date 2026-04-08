@@ -20,6 +20,107 @@ function Assert-CommandExists([string]$CommandName) {
   }
 }
 
+function Assert-LastExitCode([string]$Action) {
+  if ((Test-Path variable:LASTEXITCODE) -and $LASTEXITCODE -ne 0) {
+    throw "$Action failed with exit code $LASTEXITCODE."
+  }
+}
+
+function Resolve-CommandPath([string]$CommandName) {
+  $cmd = Get-Command $CommandName -ErrorAction SilentlyContinue
+  if (-not $cmd) {
+    throw "Command not found: '$CommandName'. Ensure it is installed and on PATH."
+  }
+
+  if ($cmd.Path) {
+    return $cmd.Path
+  }
+
+  return $cmd.Source
+}
+
+function Test-IsWindows() {
+  return [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+}
+
+function Resolve-GodotExecutable([string]$RequestedExe) {
+  $resolvedExe = Resolve-CommandPath $RequestedExe
+  if (-not (Test-IsWindows)) {
+    return $resolvedExe
+  }
+
+  $dir = Split-Path -Parent $resolvedExe
+  $base = [System.IO.Path]::GetFileNameWithoutExtension($resolvedExe)
+  $ext = [System.IO.Path]::GetExtension($resolvedExe)
+  if ($base -match '(?i)_console$') {
+    return $resolvedExe
+  }
+
+  $consoleSibling = Join-Path $dir ($base + "_console" + $ext)
+  if (Test-Path -LiteralPath $consoleSibling) {
+    return $consoleSibling
+  }
+
+  return $resolvedExe
+}
+
+function Normalize-GodotExtensionList([string]$GodotProjectDir) {
+  $godotCacheDir = Join-Path $GodotProjectDir ".godot"
+  $extensionListPath = Join-Path $godotCacheDir "extension_list.cfg"
+  $defaultExt = "res://rust.gdextension"
+
+  if (-not (Test-Path $godotCacheDir)) {
+    New-Item -ItemType Directory -Force -Path $godotCacheDir | Out-Null
+  }
+
+  $kept = [System.Collections.Generic.List[string]]::new()
+  if (Test-Path $extensionListPath) {
+    $raw = Get-Content -Raw -LiteralPath $extensionListPath
+    $lines = $raw -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_.Length -gt 0 }
+
+    foreach ($line in $lines) {
+      if ($line -notmatch '^res://') { continue }
+      $rel = $line.Substring(6)
+      $fsPath = Join-Path $GodotProjectDir $rel
+      if (Test-Path $fsPath) {
+        [void]$kept.Add($line)
+      }
+    }
+  }
+
+  $defaultRel = $defaultExt.Substring(6)
+  if (Test-Path (Join-Path $GodotProjectDir $defaultRel)) {
+    if (-not ($kept -contains $defaultExt)) {
+      $kept.Insert(0, $defaultExt)
+    }
+  }
+
+  Set-Content -LiteralPath $extensionListPath -Value ($kept -join "`n") -Encoding UTF8
+}
+
+function Test-GodotImportNeeded([string]$GodotProjectDir) {
+  $importedDir = Join-Path $GodotProjectDir ".godot/imported"
+  if (-not (Test-Path $importedDir)) {
+    return $true
+  }
+
+  return -not (Get-ChildItem -LiteralPath $importedDir -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+}
+
+function Ensure-GodotImported([string]$GodotExePath, [string]$GodotProjectDir) {
+  Normalize-GodotExtensionList -GodotProjectDir $GodotProjectDir
+
+  if (-not (Test-GodotImportNeeded -GodotProjectDir $GodotProjectDir)) {
+    return
+  }
+
+  Write-Host "Importing Godot assets for first run..."
+  & $GodotExePath --path $GodotProjectDir --import --quit
+  Assert-LastExitCode "$GodotExePath --path $GodotProjectDir --import --quit"
+
+  Normalize-GodotExtensionList -GodotProjectDir $GodotProjectDir
+}
+
 function Invoke-RustBuild([string]$RustDir, [string]$BuildMode) {
   if ($BuildMode -eq "None") {
     return
@@ -55,6 +156,8 @@ if (-not (Test-Path $projectFile)) {
 Invoke-RustBuild -RustDir $rustDir -BuildMode $Build
 
 Assert-CommandExists $GodotExe
+$resolvedGodotExe = Resolve-GodotExecutable $GodotExe
+Ensure-GodotImported -GodotExePath $resolvedGodotExe -GodotProjectDir $godotDir
 
 $launchArgs = @()
 if ($Headless) {
@@ -69,7 +172,7 @@ if ($GodotArgs) {
 }
 
 Write-Host "Launching Godot..."
-& $GodotExe @launchArgs
+& $resolvedGodotExe @launchArgs
 
 if (Test-Path variable:LASTEXITCODE) {
   if ($LASTEXITCODE -ne 0) {
