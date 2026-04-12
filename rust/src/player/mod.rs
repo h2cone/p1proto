@@ -1,3 +1,4 @@
+mod aim_indicator;
 mod animation;
 mod hazard;
 mod input_adapter;
@@ -13,6 +14,7 @@ use godot::{
     prelude::*,
 };
 
+use self::aim_indicator::{AimDirection, AimIndicator, AimInput};
 use self::platform::PlatformDropController;
 
 const MOVING_PLATFORM_LAYER: i32 = 4;
@@ -28,9 +30,13 @@ pub struct Player {
     base: Base<CharacterBody2D>,
     movement: Option<PlayerMovement>,
     sprite: OnReady<Gd<AnimatedSprite2D>>,
+    aim_indicator: Option<Gd<AimIndicator>>,
+    #[export]
+    aim_indicator_distance: f32,
     input_actions: InputActions,
     animation_names: AnimationNames,
     drop_controller: PlatformDropController,
+    aim_direction: AimDirection,
     is_dying: bool,
 }
 
@@ -41,12 +47,15 @@ impl ICharacterBody2D for Player {
             base,
             movement: None,
             sprite: OnReady::from_node("AnimatedSprite2D"),
+            aim_indicator: None,
+            aim_indicator_distance: 12.0,
             input_actions: InputActions::default(),
             animation_names: AnimationNames::default(),
             drop_controller: PlatformDropController::new(
                 DROP_THROUGH_DURATION,
                 MOVING_PLATFORM_LAYER,
             ),
+            aim_direction: AimDirection::default(),
             is_dying: false,
         }
     }
@@ -70,12 +79,21 @@ impl ICharacterBody2D for Player {
             frames.set_animation_loop(DEATH_ANIMATION, false);
         }
 
+        self.aim_indicator = self.base().try_get_node_as::<AimIndicator>("AimIndicator");
+        if self.aim_indicator.is_none() {
+            godot_warn!(
+                "[Player] AimIndicator node not found - add a child AimIndicator node in the editor to enable the template"
+            );
+        }
+        self.update_aim_indicator(AimInput::default());
+
         godot_print!("[Player] ready")
     }
 
     fn physics_process(&mut self, delta: f64) {
         if self.is_dying {
             self.base_mut().set_velocity(Vector2::ZERO);
+            self.set_aim_indicator_visible(false);
             return;
         }
 
@@ -94,6 +112,7 @@ impl ICharacterBody2D for Player {
         }
 
         let movement_input = input_adapter::collect_movement_input(&self.input_actions);
+        let aim_input = input_adapter::collect_aim_input(&self.input_actions);
         let Some(movement) = self.movement.as_mut() else {
             return;
         };
@@ -125,6 +144,7 @@ impl ICharacterBody2D for Player {
             input_adapter::get_push_direction(&self.input_actions),
             PUSH_SPEED,
         );
+        self.update_aim_indicator(aim_input);
 
         let visual_direction_x =
             animation::resolve_visual_direction_x(movement_input.direction, resolved_velocity.x);
@@ -168,6 +188,7 @@ impl Player {
 
         let mut body = self.to_gd().upcast::<CharacterBody2D>();
         self.drop_controller.reset(&mut body);
+        self.set_aim_indicator_visible(false);
     }
 
     fn start_death(&mut self) {
@@ -175,10 +196,32 @@ impl Player {
             return;
         }
         self.is_dying = true;
+        self.set_aim_indicator_visible(false);
         self.base_mut().set_velocity(Vector2::ZERO);
         self.sprite.set_animation(DEATH_ANIMATION);
         self.sprite.set_frame(0);
         self.sprite.play();
+    }
+
+    fn update_aim_indicator(&mut self, input: AimInput) {
+        let visual = aim_indicator::resolve_indicator_visual(
+            self.aim_direction,
+            input,
+            self.aim_indicator_distance,
+        );
+        self.aim_direction = visual.facing;
+
+        let Some(indicator) = self.aim_indicator.as_mut() else {
+            return;
+        };
+        indicator.bind_mut().apply_visual(visual);
+    }
+
+    fn set_aim_indicator_visible(&mut self, visible: bool) {
+        let Some(indicator) = self.aim_indicator.as_ref() else {
+            return;
+        };
+        indicator.clone().bind_mut().set_indicator_visible(visible);
     }
 
     fn check_hazard_collision(&mut self) -> bool {

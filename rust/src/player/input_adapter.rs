@@ -5,12 +5,15 @@ use godot::classes::Input;
 use godot::prelude::*;
 
 use super::MovementInput;
+use super::aim_indicator::AimInput;
 
 /// Input action names configuration.
 /// Allows customization of action names without changing logic.
 pub struct InputActions {
     pub walk_left: &'static str,
     pub walk_right: &'static str,
+    pub aim_up: &'static str,
+    pub aim_down: &'static str,
     pub jump: &'static str,
     pub drop_through: &'static str,
 }
@@ -20,6 +23,8 @@ impl Default for InputActions {
         Self {
             walk_left: "act_walk_left",
             walk_right: "act_walk_right",
+            aim_up: "act_up",
+            aim_down: "act_down",
             jump: "act_jump",
             drop_through: "act_down",
         }
@@ -33,6 +38,15 @@ pub fn collect_movement_input(actions: &InputActions) -> MovementInput {
         direction: input.get_axis(actions.walk_left, actions.walk_right),
         jump_just_pressed: input.is_action_just_pressed(actions.jump),
         jump_just_released: input.is_action_just_released(actions.jump),
+    }
+}
+
+/// Collect four-way aim input from Godot Input singleton.
+pub fn collect_aim_input(actions: &InputActions) -> AimInput {
+    let input = Input::singleton();
+    AimInput {
+        horizontal: input.get_axis(actions.walk_left, actions.walk_right),
+        vertical: input.get_axis(actions.aim_up, actions.aim_down),
     }
 }
 
