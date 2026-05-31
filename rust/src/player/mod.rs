@@ -103,6 +103,11 @@ impl ICharacterBody2D for Player {
             return;
         }
 
+        if input_adapter::is_respawn_pressed(&self.input_actions) {
+            self.start_death();
+            return;
+        }
+
         let movement_input = input_adapter::collect_movement_input(&self.input_actions);
         let mut body = self.to_gd().upcast::<CharacterBody2D>();
         let touching_ladder = self.is_touching_ladder();

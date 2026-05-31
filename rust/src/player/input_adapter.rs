@@ -18,6 +18,7 @@ pub struct InputActions {
     pub climb_down: &'static str,
     pub jump: &'static str,
     pub drop_through: &'static str,
+    pub respawn: &'static str,
 }
 
 impl Default for InputActions {
@@ -31,6 +32,7 @@ impl Default for InputActions {
             climb_down: "act_down",
             jump: "act_jump",
             drop_through: "act_down",
+            respawn: "act_respawn",
         }
     }
 }
@@ -60,10 +62,25 @@ pub fn is_drop_through_pressed(actions: &InputActions) -> bool {
     Input::singleton().is_action_just_pressed(actions.drop_through)
 }
 
+/// Check if quick respawn action was just pressed.
+pub fn is_respawn_pressed(actions: &InputActions) -> bool {
+    Input::singleton().is_action_just_pressed(actions.respawn)
+}
+
 /// Get horizontal push direction for rigid body pushing.
 /// Returns -1.0 to 1.0, or 0.0 if below threshold.
 pub fn get_push_direction(actions: &InputActions) -> f32 {
     let input = Input::singleton();
     let dir = input.get_axis(actions.walk_left, actions.walk_right);
     if dir.abs() < 0.01 { 0.0 } else { dir }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_actions_include_respawn_action() {
+        assert_eq!(InputActions::default().respawn, "act_respawn");
+    }
 }
