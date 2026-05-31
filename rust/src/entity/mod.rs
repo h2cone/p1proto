@@ -1,6 +1,7 @@
 pub mod checkpoint;
 pub mod collectible_star;
 pub mod crumbling_platform;
+pub mod ladder;
 pub mod moving_platform;
 pub(crate) mod persistence;
 pub mod plain_key;

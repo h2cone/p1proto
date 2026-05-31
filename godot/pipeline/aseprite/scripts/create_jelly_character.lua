@@ -10,6 +10,7 @@ sprite:deleteFrame(1)
 
 -- Define colors
 local cyan = Color({ r = 0, g = 255, b = 255, a = 255 })
+local lightCyan = Color({ r = 120, g = 255, b = 255, a = 255 })
 local darkCyan = Color({ r = 0, g = 180, b = 180, a = 255 })
 local white = Color({ r = 255, g = 255, b = 255, a = 255 })
 local black = Color({ r = 0, g = 0, b = 0, a = 255 })
@@ -69,6 +70,17 @@ local function drawJellyBody(cel, x, y, width, height, facingRight)
 	for py = y, y + height - 1 do
 		img:drawPixel(x + width - 1, py, darkCyan)
 	end
+end
+
+-- Helper function to draw sticky side grips for ladder climbing
+local function drawClimbGrips(cel, offsetX, offsetY, phase)
+	local leftGripY = (phase == 1) and 6 or 13
+	local rightGripY = (phase == 1) and 13 or 6
+
+	fillRect(cel, offsetX, offsetY + leftGripY, 4, 2, lightCyan)
+	fillRect(cel, offsetX + 12, offsetY + rightGripY, 4, 2, lightCyan)
+	fillRect(cel, offsetX, offsetY + leftGripY + 2, 2, 1, darkCyan)
+	fillRect(cel, offsetX + 14, offsetY + rightGripY + 2, 2, 1, darkCyan)
 end
 
 -- Store tag info to create them after all frames exist
@@ -265,6 +277,49 @@ for i = 1, 4 do
 end
 queueTag("land", landStart, frameIndex - 1)
 
+-- ==================== CLIMB ANIMATION ====================
+-- 4 frames, sticky alternating grips for ladder climbing
+local climbStart = frameIndex
+for i = 1, 4 do
+	local frame = sprite:newEmptyFrame(frameIndex)
+	frameIndex = frameIndex + 1
+	frame.duration = 0.12
+
+	local cel = newCelWithImage(frame)
+
+	local yOffset, heightMod, widthMod, xMod = 0, 0, 0, 0
+
+	if i == 1 then
+		-- Left side reaches high, right side anchors low
+		yOffset = 0
+		heightMod = 0
+		widthMod = 0
+		xMod = 0
+	elseif i == 2 then
+		-- Pull upward with a little stretch
+		yOffset = -1
+		heightMod = 2
+		widthMod = -1
+		xMod = 1
+	elseif i == 3 then
+		-- Opposite side reaches while the body squashes
+		yOffset = 1
+		heightMod = -2
+		widthMod = 2
+		xMod = -1
+	else
+		-- Recover into the next pull
+		yOffset = -1
+		heightMod = 1
+		widthMod = 0
+		xMod = 0
+	end
+
+	drawJellyBody(cel, xMod, yOffset, 16 + widthMod, 24 + heightMod, true)
+	drawClimbGrips(cel, xMod, yOffset, (i == 1 or i == 2) and 1 or 2)
+end
+queueTag("climb", climbStart, frameIndex - 1)
+
 -- ==================== DEATH ANIMATION ====================
 -- 6 frames, shock then splat/dissolve effect
 local deathStart = frameIndex
@@ -398,4 +453,14 @@ for i, tag in ipairs(sprite.tags) do
 	tag.aniDir = AniDir.FORWARD
 end
 
-app.alert("Jelly Character Sprite Sheet Created!")
+local outPath = nil
+if app.params ~= nil then
+	outPath = app.params["out"]
+end
+if outPath ~= nil and outPath ~= "" then
+	sprite:saveAs(outPath)
+end
+
+if app.isUIAvailable then
+	app.alert("Jelly Character Sprite Sheet Created!")
+end

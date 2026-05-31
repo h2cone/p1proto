@@ -15,6 +15,7 @@ pub struct AnimationNames {
     pub walk: &'static str,
     pub jump: &'static str,
     pub fall: &'static str,
+    pub climb: &'static str,
 }
 
 impl Default for AnimationNames {
@@ -24,6 +25,7 @@ impl Default for AnimationNames {
             walk: "walk",
             jump: "jump",
             fall: "fall",
+            climb: "climb",
         }
     }
 }
@@ -73,6 +75,16 @@ pub fn play_animation_if_changed(sprite: &mut Gd<AnimatedSprite2D>, animation: &
     let animation_name = StringName::from(animation);
     if !animation.is_empty() && animation_name != sprite.get_animation() {
         sprite.set_animation(&animation_name);
+        sprite.play();
+    }
+}
+
+pub fn set_animation_paused(sprite: &mut Gd<AnimatedSprite2D>, animation: &str, paused: bool) {
+    play_animation_if_changed(sprite, animation);
+
+    if paused {
+        sprite.stop();
+    } else if !sprite.is_playing() {
         sprite.play();
     }
 }

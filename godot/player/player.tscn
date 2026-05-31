@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://crh8dy0krhs03"]
 
-[ext_resource type="SpriteFrames" uid="uid://j5frux6svamw" path="res://pipeline/aseprite/wizard/jelly_character.res" id="1_oul6g"]
+[ext_resource type="SpriteFrames" path="res://pipeline/aseprite/wizard/jelly_character.res" id="1_oul6g"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_4flbx"]
 size = Vector2(16, 24)

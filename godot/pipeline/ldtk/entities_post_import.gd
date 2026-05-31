@@ -28,6 +28,8 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 		match entity_key:
 			"moving_platform":
 				setup_moving_platform(entity_layer, entity, entity_counts[entity_key])
+			"ladder":
+				setup_ladder(entity_layer, entity, entity_counts[entity_key])
 			"portal":
 				setup_portal(entity_layer, entity, entity_counts[entity_key])
 			"pressure_plate":
@@ -245,6 +247,29 @@ func setup_moving_platform(entity_layer: LDTKEntityLayer, entity_data: Variant, 
 	finalize_entity(entity_layer, instance, entity_data, entity_key)
 	print("  - Instantiated %s.tscn" % entity_key)
 	print("  - Configured: travel=(%.1f, %.1f), duration=%.1fs, pause=%.1fs" % [travel_x, travel_y, duration, pause_time])
+
+
+func setup_ladder(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
+	"""Set up a Ladder entity using the LDtk entity rectangle as its climbable bounds"""
+	var entity_key := "ladder"
+	var scene_path := get_scene_path(entity_key)
+
+	print("Setting up %s" % get_entity_identifier(entity_data))
+
+	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
+	if not instance:
+		return
+
+	var size := get_entity_size(entity_data)
+	var width_px: float = max(1.0, size.x)
+	var length_px: float = max(1.0, size.y)
+
+	instance.set("width_px", width_px)
+	instance.set("length_px", length_px)
+
+	finalize_entity(entity_layer, instance, entity_data, entity_key)
+	print("  - Instantiated %s.tscn" % entity_key)
+	print("  - Configured: size=(%.1f, %.1f)" % [width_px, length_px])
 
 
 func get_entity_field(entity_data: Variant, field_name: String, default_value: Variant) -> Variant:

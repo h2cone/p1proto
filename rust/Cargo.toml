@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-godot = { git = "https://github.com/godot-rust/gdext", rev = "afd10303489c62a3e000300be73cfff37419bfcb" }
+godot = { git = "https://github.com/godot-rust/gdext", rev = "1a9e41f3dfb2ba29f39b2932acf25a417e8c806b" }
 
 [profile.dev]
 opt-level = 1
