@@ -23,7 +23,7 @@ const HAZARD_LAYER: i32 = 12;
 const DROP_THROUGH_DURATION: f64 = 0.35;
 const PUSH_SPEED: f32 = 80.0;
 const DEATH_ANIMATION: &str = "death";
-const CLIMB_START_THRESHOLD: f32 = -0.2;
+const CLIMB_START_THRESHOLD: f32 = 0.2;
 const HAZARD_TILEMAP_PREFIXES: [&str; 2] = ["HazardsTiles", "Hazards"];
 
 #[derive(GodotClass)]
@@ -129,11 +129,12 @@ impl ICharacterBody2D for Player {
             }
         }
 
-        if !jumped_from_ladder
-            && !self.ladder_regrab_blocked
-            && movement_input.vertical_direction <= CLIMB_START_THRESHOLD
-            && touching_ladder
-        {
+        if should_start_climbing(
+            movement_input,
+            touching_ladder,
+            self.ladder_regrab_blocked,
+            jumped_from_ladder,
+        ) {
             self.start_climbing(&mut body);
             self.physics_process_climb(movement_input);
             return;
@@ -207,6 +208,26 @@ impl ICharacterBody2D for Player {
 fn project_gravity() -> f32 {
     let settings = ProjectSettings::singleton();
     settings.get("physics/2d/default_gravity").to::<f64>() as f32
+}
+
+fn should_start_climbing(
+    movement_input: MovementInput,
+    touching_ladder: bool,
+    ladder_regrab_blocked: bool,
+    jumped_from_ladder: bool,
+) -> bool {
+    !jumped_from_ladder
+        && !ladder_regrab_blocked
+        && touching_ladder
+        && has_climb_input(movement_input)
+}
+
+fn should_clear_ladder_regrab_block(movement_input: MovementInput, touching_ladder: bool) -> bool {
+    !touching_ladder || !has_climb_input(movement_input)
+}
+
+fn has_climb_input(movement_input: MovementInput) -> bool {
+    movement_input.vertical_direction.abs() >= CLIMB_START_THRESHOLD
 }
 
 #[godot_api]
@@ -292,7 +313,7 @@ impl Player {
             return;
         }
 
-        if !touching_ladder || movement_input.vertical_direction > CLIMB_START_THRESHOLD {
+        if should_clear_ladder_regrab_block(movement_input, touching_ladder) {
             self.ladder_regrab_blocked = false;
         }
     }
@@ -343,5 +364,81 @@ impl Player {
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn input_with_vertical(vertical_direction: f32) -> MovementInput {
+        MovementInput {
+            vertical_direction,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn starts_ladder_climbing_with_down_input_when_touching_ladder() {
+        assert!(should_start_climbing(
+            input_with_vertical(1.0),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn starts_ladder_climbing_with_up_input_when_touching_ladder() {
+        assert!(should_start_climbing(
+            input_with_vertical(-1.0),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn ignores_tiny_vertical_input_for_ladder_start() {
+        assert!(!should_start_climbing(
+            input_with_vertical(0.1),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn does_not_start_ladder_climbing_while_regrab_is_blocked() {
+        assert!(!should_start_climbing(
+            input_with_vertical(1.0),
+            true,
+            true,
+            false,
+        ));
+    }
+
+    #[test]
+    fn keeps_ladder_regrab_block_while_vertical_input_is_held() {
+        assert!(!should_clear_ladder_regrab_block(
+            input_with_vertical(1.0),
+            true,
+        ));
+        assert!(!should_clear_ladder_regrab_block(
+            input_with_vertical(-1.0),
+            true,
+        ));
+    }
+
+    #[test]
+    fn clears_ladder_regrab_block_after_releasing_vertical_input_or_leaving_ladder() {
+        assert!(should_clear_ladder_regrab_block(
+            input_with_vertical(0.0),
+            true,
+        ));
+        assert!(should_clear_ladder_regrab_block(
+            input_with_vertical(1.0),
+            false,
+        ));
     }
 }
