@@ -1,0 +1,14 @@
+[remap]
+
+importer="aseprite_wizard.plugin.noop"
+type="PackedDataContainer"
+uid="uid://cib0rcqpun026"
+path="res://.godot/imported/ladder.aseprite-be3093c1b7890dfd5e799215fae33f89.res"
+
+[deps]
+
+source_file="res://pipeline/aseprite/src/ladder.aseprite"
+dest_files=["res://.godot/imported/ladder.aseprite-be3093c1b7890dfd5e799215fae33f89.res"]
+
+[params]
+

@@ -1,6 +1,8 @@
+mod aim_indicator;
 mod animation;
 mod hazard;
 mod input_adapter;
+mod ladder;
 mod platform;
 mod push;
 
@@ -9,10 +11,11 @@ pub use animation::AnimationNames;
 pub use input_adapter::InputActions;
 
 use godot::{
-    classes::{AnimatedSprite2D, CharacterBody2D, ICharacterBody2D, ProjectSettings},
+    classes::{AnimatedSprite2D, CharacterBody2D, ICharacterBody2D, Node2D, ProjectSettings},
     prelude::*,
 };
 
+use self::aim_indicator::{AimDirection, AimIndicator, AimInput};
 use self::platform::PlatformDropController;
 
 const MOVING_PLATFORM_LAYER: i32 = 4;
@@ -20,6 +23,7 @@ const HAZARD_LAYER: i32 = 12;
 const DROP_THROUGH_DURATION: f64 = 0.35;
 const PUSH_SPEED: f32 = 80.0;
 const DEATH_ANIMATION: &str = "death";
+const CLIMB_START_THRESHOLD: f32 = 0.2;
 const HAZARD_TILEMAP_PREFIXES: [&str; 2] = ["HazardsTiles", "Hazards"];
 
 #[derive(GodotClass)]
@@ -28,10 +32,16 @@ pub struct Player {
     base: Base<CharacterBody2D>,
     movement: Option<PlayerMovement>,
     sprite: OnReady<Gd<AnimatedSprite2D>>,
+    aim_indicator: Option<Gd<AimIndicator>>,
+    #[export]
+    aim_indicator_distance: f32,
     input_actions: InputActions,
     animation_names: AnimationNames,
     drop_controller: PlatformDropController,
+    aim_direction: AimDirection,
     is_dying: bool,
+    is_climbing: bool,
+    ladder_regrab_blocked: bool,
 }
 
 #[godot_api]
@@ -41,13 +51,18 @@ impl ICharacterBody2D for Player {
             base,
             movement: None,
             sprite: OnReady::from_node("AnimatedSprite2D"),
+            aim_indicator: None,
+            aim_indicator_distance: 12.0,
             input_actions: InputActions::default(),
             animation_names: AnimationNames::default(),
             drop_controller: PlatformDropController::new(
                 DROP_THROUGH_DURATION,
                 MOVING_PLATFORM_LAYER,
             ),
+            aim_direction: AimDirection::default(),
             is_dying: false,
+            is_climbing: false,
+            ladder_regrab_blocked: false,
         }
     }
 
@@ -70,18 +85,63 @@ impl ICharacterBody2D for Player {
             frames.set_animation_loop(DEATH_ANIMATION, false);
         }
 
+        self.aim_indicator = self.base().try_get_node_as::<AimIndicator>("AimIndicator");
+        if self.aim_indicator.is_none() {
+            godot_warn!(
+                "[Player] AimIndicator node not found - add a child AimIndicator node in the editor to enable the template"
+            );
+        }
+        self.update_aim_indicator(AimInput::default());
+
         godot_print!("[Player] ready")
     }
 
     fn physics_process(&mut self, delta: f64) {
         if self.is_dying {
             self.base_mut().set_velocity(Vector2::ZERO);
+            self.set_aim_indicator_visible(false);
+            return;
+        }
+
+        if input_adapter::is_respawn_pressed(&self.input_actions) {
+            self.start_death();
+            return;
+        }
+
+        let movement_input = input_adapter::collect_movement_input(&self.input_actions);
+        let mut body = self.to_gd().upcast::<CharacterBody2D>();
+        let touching_ladder = self.is_touching_ladder();
+        self.update_ladder_regrab_block(movement_input, touching_ladder);
+        let mut jumped_from_ladder = false;
+
+        if self.is_climbing {
+            if touching_ladder {
+                if movement_input.jump_just_pressed {
+                    self.stop_climbing();
+                    self.ladder_regrab_blocked = true;
+                    jumped_from_ladder = true;
+                } else {
+                    self.physics_process_climb(movement_input);
+                    return;
+                }
+            } else {
+                self.stop_climbing();
+            }
+        }
+
+        if should_start_climbing(
+            movement_input,
+            touching_ladder,
+            self.ladder_regrab_blocked,
+            jumped_from_ladder,
+        ) {
+            self.start_climbing(&mut body);
+            self.physics_process_climb(movement_input);
             return;
         }
 
         let velocity = self.base().get_velocity();
         let mut is_on_floor = self.base().is_on_floor();
-        let mut body = self.to_gd().upcast::<CharacterBody2D>();
 
         self.drop_controller.update(
             &mut body,
@@ -93,11 +153,16 @@ impl ICharacterBody2D for Player {
             is_on_floor = false;
         }
 
-        let movement_input = input_adapter::collect_movement_input(&self.input_actions);
+        let aim_input = input_adapter::collect_aim_input(&self.input_actions);
         let Some(movement) = self.movement.as_mut() else {
             return;
         };
-        let new_velocity = movement.physics_process(velocity, is_on_floor, delta, movement_input);
+        let new_velocity = movement.physics_process(
+            velocity,
+            is_on_floor || jumped_from_ladder,
+            delta,
+            movement_input,
+        );
 
         self.base_mut().set_velocity(new_velocity);
         self.base_mut().move_and_slide();
@@ -125,6 +190,7 @@ impl ICharacterBody2D for Player {
             input_adapter::get_push_direction(&self.input_actions),
             PUSH_SPEED,
         );
+        self.update_aim_indicator(aim_input);
 
         let visual_direction_x =
             animation::resolve_visual_direction_x(movement_input.direction, resolved_velocity.x);
@@ -142,6 +208,26 @@ impl ICharacterBody2D for Player {
 fn project_gravity() -> f32 {
     let settings = ProjectSettings::singleton();
     settings.get("physics/2d/default_gravity").to::<f64>() as f32
+}
+
+fn should_start_climbing(
+    movement_input: MovementInput,
+    touching_ladder: bool,
+    ladder_regrab_blocked: bool,
+    jumped_from_ladder: bool,
+) -> bool {
+    !jumped_from_ladder
+        && !ladder_regrab_blocked
+        && touching_ladder
+        && has_climb_input(movement_input)
+}
+
+fn should_clear_ladder_regrab_block(movement_input: MovementInput, touching_ladder: bool) -> bool {
+    !touching_ladder || !has_climb_input(movement_input)
+}
+
+fn has_climb_input(movement_input: MovementInput) -> bool {
+    movement_input.vertical_direction.abs() >= CLIMB_START_THRESHOLD
 }
 
 #[godot_api]
@@ -166,19 +252,105 @@ impl Player {
             movement.reset_transient_state();
         }
 
+        self.is_climbing = false;
+        self.ladder_regrab_blocked = false;
+
         let mut body = self.to_gd().upcast::<CharacterBody2D>();
         self.drop_controller.reset(&mut body);
+        self.set_aim_indicator_visible(false);
+    }
+
+    fn start_climbing(&mut self, body: &mut Gd<CharacterBody2D>) {
+        self.is_climbing = true;
+        self.set_aim_indicator_visible(false);
+        self.drop_controller.reset(body);
+        if let Some(movement) = &mut self.movement {
+            movement.reset_transient_state();
+        }
+    }
+
+    fn stop_climbing(&mut self) {
+        self.is_climbing = false;
+        if let Some(movement) = &mut self.movement {
+            movement.reset_transient_state();
+        }
+    }
+
+    fn physics_process_climb(&mut self, movement_input: MovementInput) {
+        self.set_aim_indicator_visible(false);
+
+        let climb_velocity = self.movement.as_ref().map_or(Vector2::ZERO, |movement| {
+            movement.climb_velocity(movement_input)
+        });
+
+        self.base_mut().set_velocity(climb_velocity);
+        self.base_mut().move_and_slide();
+
+        if self.check_hazard_collision() {
+            self.start_death();
+            return;
+        }
+
+        self.sprite.set_scale(Vector2::new(1.0, 1.0));
+        animation::set_animation_paused(
+            &mut self.sprite,
+            self.animation_names.climb,
+            climb_velocity.is_zero_approx(),
+        );
+
+        if !self.is_touching_ladder() {
+            self.stop_climbing();
+        }
+    }
+
+    fn is_touching_ladder(&self) -> bool {
+        let player = self.to_gd().upcast::<Node2D>();
+        ladder::is_touching_ladder(&player)
+    }
+
+    fn update_ladder_regrab_block(&mut self, movement_input: MovementInput, touching_ladder: bool) {
+        if !self.ladder_regrab_blocked {
+            return;
+        }
+
+        if should_clear_ladder_regrab_block(movement_input, touching_ladder) {
+            self.ladder_regrab_blocked = false;
+        }
     }
 
     fn start_death(&mut self) {
         if self.is_dying {
             return;
         }
+        self.is_climbing = false;
+        self.ladder_regrab_blocked = false;
         self.is_dying = true;
+        self.set_aim_indicator_visible(false);
         self.base_mut().set_velocity(Vector2::ZERO);
         self.sprite.set_animation(DEATH_ANIMATION);
         self.sprite.set_frame(0);
         self.sprite.play();
+    }
+
+    fn update_aim_indicator(&mut self, input: AimInput) {
+        let visual = aim_indicator::resolve_indicator_visual(
+            self.aim_direction,
+            input,
+            self.aim_indicator_distance,
+        );
+        self.aim_direction = visual.facing;
+
+        let Some(indicator) = self.aim_indicator.as_mut() else {
+            return;
+        };
+        indicator.bind_mut().apply_visual(visual);
+    }
+
+    fn set_aim_indicator_visible(&mut self, visible: bool) {
+        let Some(indicator) = self.aim_indicator.as_ref() else {
+            return;
+        };
+        indicator.clone().bind_mut().set_indicator_visible(visible);
     }
 
     fn check_hazard_collision(&mut self) -> bool {
@@ -192,5 +364,81 @@ impl Player {
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn input_with_vertical(vertical_direction: f32) -> MovementInput {
+        MovementInput {
+            vertical_direction,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn starts_ladder_climbing_with_down_input_when_touching_ladder() {
+        assert!(should_start_climbing(
+            input_with_vertical(1.0),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn starts_ladder_climbing_with_up_input_when_touching_ladder() {
+        assert!(should_start_climbing(
+            input_with_vertical(-1.0),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn ignores_tiny_vertical_input_for_ladder_start() {
+        assert!(!should_start_climbing(
+            input_with_vertical(0.1),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn does_not_start_ladder_climbing_while_regrab_is_blocked() {
+        assert!(!should_start_climbing(
+            input_with_vertical(1.0),
+            true,
+            true,
+            false,
+        ));
+    }
+
+    #[test]
+    fn keeps_ladder_regrab_block_while_vertical_input_is_held() {
+        assert!(!should_clear_ladder_regrab_block(
+            input_with_vertical(1.0),
+            true,
+        ));
+        assert!(!should_clear_ladder_regrab_block(
+            input_with_vertical(-1.0),
+            true,
+        ));
+    }
+
+    #[test]
+    fn clears_ladder_regrab_block_after_releasing_vertical_input_or_leaving_ladder() {
+        assert!(should_clear_ladder_regrab_block(
+            input_with_vertical(0.0),
+            true,
+        ));
+        assert!(should_clear_ladder_regrab_block(
+            input_with_vertical(1.0),
+            false,
+        ));
     }
 }

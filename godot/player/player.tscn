@@ -1,17 +1,21 @@
-[gd_scene load_steps=3 format=3 uid="uid://crh8dy0krhs03"]
+[gd_scene format=3 uid="uid://crh8dy0krhs03"]
 
-[ext_resource type="SpriteFrames" uid="uid://j5frux6svamw" path="res://pipeline/aseprite/wizard/jelly_character.res" id="1_oul6g"]
+[ext_resource type="SpriteFrames" path="res://pipeline/aseprite/wizard/jelly_character.res" id="1_oul6g"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_4flbx"]
 size = Vector2(16, 24)
 
-[node name="Player" type="Player"]
+[node name="Player" type="Player" unique_id=1247755864]
+aim_indicator_distance = 24.0
 collision_layer = 2
 collision_mask = 7708
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=502388805]
 sprite_frames = ExtResource("1_oul6g")
 animation = &"idle"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1917355769]
 shape = SubResource("RectangleShape2D_4flbx")
+
+[node name="AimIndicator" type="AimIndicator" parent="." unique_id=1934512695]
+z_index = 1

@@ -44,9 +44,6 @@ func _init() -> void:
 		if not changed:
 			continue
 
-		for child in room.get_children():
-			_set_owner_recursive(child, room)
-
 		var packed := PackedScene.new()
 		var pack_err := packed.pack(room)
 		if pack_err != OK:
@@ -73,8 +70,3 @@ func _clear_entity_layer_children(entity_layer: LDTKEntityLayer) -> void:
 		child.owner = null
 		child.free()
 
-
-func _set_owner_recursive(node: Node, owner: Node) -> void:
-	node.owner = owner
-	for child in node.get_children():
-		_set_owner_recursive(child, owner)

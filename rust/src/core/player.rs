@@ -12,6 +12,7 @@ pub enum MovementState {
 #[derive(Default, Clone, Copy)]
 pub struct MovementInput {
     pub direction: f32,
+    pub vertical_direction: f32,
     pub jump_just_pressed: bool,
     pub jump_just_released: bool,
 }
@@ -29,6 +30,7 @@ pub struct MovementConfig {
     pub coyote_time: f32,
     pub jump_release_velocity_factor: f32,
     pub min_walk_speed: f32,
+    pub climb_speed: f32,
 }
 
 impl Default for MovementConfig {
@@ -52,6 +54,7 @@ impl MovementConfig {
             coyote_time: 0.10,
             jump_release_velocity_factor: 0.5,
             min_walk_speed: 0.1,
+            climb_speed: 80.0,
         }
     }
 }
@@ -226,6 +229,25 @@ impl PlayerMovement {
     pub fn is_walking_or_pressing(&self, velocity: Vector2, input_direction: f32) -> bool {
         input_direction.abs() >= INPUT_DEADZONE || self.is_walking(velocity)
     }
+
+    pub fn climb_velocity(&self, input: MovementInput) -> Vector2 {
+        climb_velocity(input, self.config.climb_speed)
+    }
+}
+
+pub fn climb_velocity(input: MovementInput, climb_speed: f32) -> Vector2 {
+    Vector2::new(
+        axis_or_zero(input.direction) * climb_speed,
+        axis_or_zero(input.vertical_direction) * climb_speed,
+    )
+}
+
+fn axis_or_zero(value: f32) -> f32 {
+    if value.abs() >= INPUT_DEADZONE {
+        value
+    } else {
+        0.0
+    }
 }
 
 fn move_toward_scalar(current: f32, target: f32, max_delta: f32) -> f32 {
@@ -254,6 +276,7 @@ mod tests {
             coyote_time: 0.10,
             jump_release_velocity_factor: 0.5,
             min_walk_speed: 0.1,
+            climb_speed: 80.0,
         }
     }
 
@@ -449,5 +472,35 @@ mod tests {
         assert!(movement.is_walking_or_pressing(Vector2::ZERO, 1.0));
         assert!(movement.is_walking_or_pressing(Vector2::new(5.0, 0.0), 0.0));
         assert!(!movement.is_walking_or_pressing(Vector2::ZERO, 0.0));
+    }
+
+    #[test]
+    fn climb_velocity_maps_cardinal_input_directly() {
+        assert_eq!(
+            climb_velocity(
+                MovementInput {
+                    direction: 1.0,
+                    vertical_direction: -1.0,
+                    ..Default::default()
+                },
+                80.0,
+            ),
+            Vector2::new(80.0, -80.0)
+        );
+    }
+
+    #[test]
+    fn climb_velocity_ignores_tiny_input() {
+        assert_eq!(
+            climb_velocity(
+                MovementInput {
+                    direction: 0.005,
+                    vertical_direction: -0.005,
+                    ..Default::default()
+                },
+                80.0,
+            ),
+            Vector2::ZERO
+        );
     }
 }

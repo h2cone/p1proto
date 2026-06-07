@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://cqt8sai6yx7tq"]
+
+[ext_resource type="SpriteFrames" path="res://pipeline/aseprite/wizard/ladder.res" id="1_ladder"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ladder"]
+size = Vector2(16, 64)
+
+[node name="Ladder" type="Ladder"]
+collision_layer = 16384
+collision_mask = 2
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+visible = false
+sprite_frames = ExtResource("1_ladder")
+animation = &"default"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_ladder")
