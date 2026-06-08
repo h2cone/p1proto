@@ -14,6 +14,6 @@ export/
 # macOS
 .DS_Store
 
-# Docs
-docs/task.md
-docs/player_aim_indicator_setup.md
+# superpowers
+.superpowers/
+docs/superpowers/

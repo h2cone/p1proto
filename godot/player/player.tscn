@@ -7,12 +7,31 @@ size = Vector2(16, 24)
 
 [node name="Player" type="Player" unique_id=1247755864]
 aim_indicator_distance = 24.0
+water_surface_snap_depth = 12.0
+water_surface_float_depth = 8.0
+water_surface_horizontal_speed_multiplier = 0.9
+water_submerged_horizontal_speed_multiplier = 0.65
+water_buoyancy_velocity = -40.0
+water_swim_rise_velocity = -90.0
+water_swim_descend_velocity = 70.0
 collision_layer = 2
 collision_mask = 7708
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=502388805]
 sprite_frames = ExtResource("1_oul6g")
 animation = &"idle"
+
+[node name="WaterBodyOverlay" type="Polygon2D" parent="."]
+visible = false
+z_index = 2
+color = Color(0.0509804, 0.282353, 0.435294, 0.55)
+polygon = PackedVector2Array(-8, 0, 8, 0, 8, 12, -8, 12)
+
+[node name="WaterSurfaceOverlay" type="Polygon2D" parent="."]
+visible = false
+z_index = 3
+color = Color(0.517647, 0.933333, 0.968627, 0.8)
+polygon = PackedVector2Array(-8, 0, 8, 0, 8, 1, -8, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1917355769]
 shape = SubResource("RectangleShape2D_4flbx")

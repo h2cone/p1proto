@@ -8,6 +8,7 @@
 [node name="Game" type="Game" unique_id=1144876511]
 
 [node name="RoomManager" type="GameRoomManager" parent="." unique_id=158921282]
+initial_room = Vector2i(1, 2)
 
 [node name="PauseMenu" parent="." unique_id=704314482 instance=ExtResource("1_80nbo")]
 

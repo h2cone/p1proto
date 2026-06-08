@@ -30,6 +30,8 @@ func post_import(entity_layer: LDTKEntityLayer) -> LDTKEntityLayer:
 				setup_moving_platform(entity_layer, entity, entity_counts[entity_key])
 			"ladder":
 				setup_ladder(entity_layer, entity, entity_counts[entity_key])
+			"water_zone":
+				setup_water_zone(entity_layer, entity, entity_counts[entity_key])
 			"portal":
 				setup_portal(entity_layer, entity, entity_counts[entity_key])
 			"pressure_plate":
@@ -212,6 +214,8 @@ func parse_room_name(name: String) -> Variant:
 func resolve_owner(node: Node) -> Node:
 	if node.owner:
 		return node.owner
+	if not node.is_inside_tree():
+		return null
 	var tree := node.get_tree()
 	if tree:
 		return tree.edited_scene_root if Engine.is_editor_hint() else tree.current_scene
@@ -270,6 +274,29 @@ func setup_ladder(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence:
 	finalize_entity(entity_layer, instance, entity_data, entity_key)
 	print("  - Instantiated %s.tscn" % entity_key)
 	print("  - Configured: size=(%.1f, %.1f)" % [width_px, length_px])
+
+
+func setup_water_zone(entity_layer: LDTKEntityLayer, entity_data: Variant, sequence: int) -> void:
+	"""Set up a WaterZone entity using the LDtk entity rectangle as its water bounds"""
+	var entity_key := "water_zone"
+	var scene_path := get_scene_path(entity_key)
+
+	print("Setting up %s" % get_entity_identifier(entity_data))
+
+	var instance := instantiate_entity(entity_layer, entity_data, scene_path, sequence)
+	if not instance:
+		return
+
+	var size := get_entity_size(entity_data)
+	var width_px: float = max(1.0, size.x)
+	var height_px: float = max(1.0, size.y)
+
+	instance.set("width_px", width_px)
+	instance.set("height_px", height_px)
+
+	finalize_entity(entity_layer, instance, entity_data, entity_key)
+	print("  - Instantiated %s.tscn" % entity_key)
+	print("  - Configured: size=(%.1f, %.1f)" % [width_px, height_px])
 
 
 func get_entity_field(entity_data: Variant, field_name: String, default_value: Variant) -> Variant:

@@ -1,0 +1,43 @@
+[gd_scene load_steps=3 format=3 uid="uid://dq7uwbpbw8xlt"]
+
+[ext_resource type="SpriteFrames" path="res://pipeline/aseprite/wizard/water.res" id="1_water"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_water_zone"]
+size = Vector2(160, 64)
+
+[node name="WaterZone" type="WaterZone"]
+z_index = -10
+collision_layer = 0
+collision_mask = 2
+
+[node name="SurfaceTiles" type="Node2D" parent="."]
+
+[node name="FillTiles" type="Node2D" parent="."]
+z_index = -1
+
+[node name="SurfaceTileTemplate" type="AnimatedSprite2D" parent="."]
+visible = false
+sprite_frames = ExtResource("1_water")
+animation = &"surface_loop"
+centered = false
+
+[node name="FillTileTemplate" type="AnimatedSprite2D" parent="."]
+visible = false
+sprite_frames = ExtResource("1_water")
+animation = &"fill_loop"
+centered = false
+
+[node name="SplashPlayer" type="AnimatedSprite2D" parent="."]
+visible = false
+z_index = 2
+sprite_frames = ExtResource("1_water")
+animation = &"enter_splash"
+
+[node name="BubblePlayer" type="AnimatedSprite2D" parent="."]
+visible = false
+z_index = 1
+sprite_frames = ExtResource("1_water")
+animation = &"swim_bubbles"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_water_zone")
