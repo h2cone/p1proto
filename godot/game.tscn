@@ -10,6 +10,13 @@
 [node name="RoomManager" type="GameRoomManager" parent="." unique_id=158921282]
 initial_room = Vector2i(1, 2)
 
+[node name="RoomGridOverlay" type="RoomGridOverlay" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
 [node name="PauseMenu" parent="." unique_id=704314482 instance=ExtResource("1_80nbo")]
 
 [node name="WorldMap" parent="." unique_id=525928270 instance=ExtResource("2_8krcl")]
