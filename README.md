@@ -16,18 +16,13 @@ A compact 2D platformer prototype built with **Godot 4** and a **Rust GDExtensio
 
 Requires **Rust** (`cargo`) and **Godot 4** on `PATH`.
 
+Cross-platform workflow:
+
 ```bash
-cd rust && cargo build
-cd ../godot && godot --path .
-```
-
-Or on Windows:
-
-```powershell
-./scripts/run.ps1                  # build + launch
-./scripts/run.ps1 -Build Release   # release build
-./scripts/run.ps1 -Editor          # open editor
-./scripts/export.ps1               # export Windows build
+cargo xtask run                  # build debug Rust extension and launch
+cargo xtask run --build release  # release build
+cargo xtask run --editor         # open Godot editor
+cargo xtask export               # create export output
 ```
 
 ## Controls
@@ -47,7 +42,7 @@ Or on Windows:
 |-----------|----------|
 | [`godot/`](godot/) | Godot project, scenes, assets, pipelines, and add-ons |
 | [`rust/`](rust/) | GDExtension crate — gameplay, UI, rooms, save logic |
-| [`scripts/`](scripts/) | Helper scripts (run, export, update gdext) |
+| [`xtask/`](xtask/) | Cross-platform workflow tool invoked through `cargo xtask` |
 | [`screenshots/`](screenshots/) | Media for docs and store listings |
 | [`docs/`](docs/) | Supporting documentation |
 
