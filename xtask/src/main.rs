@@ -1,4 +1,5 @@
 mod cli;
+mod export;
 mod godot;
 mod paths;
 mod process;
@@ -14,10 +15,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Run(args) => run::execute(&paths, args),
-        Command::Export(args) => {
-            println!("export in {}: {args:?}", paths.repo_root.display());
-            Ok(())
-        }
+        Command::Export(args) => export::execute(&paths, args),
         Command::UpdateGdext(args) => {
             println!("update-gdext in {}: {args:?}", paths.repo_root.display());
             Ok(())
