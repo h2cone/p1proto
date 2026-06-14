@@ -49,7 +49,7 @@ impl MovementConfig {
             air_accel_speed: 540.0,
             air_decel_speed: 720.0,
             turn_accel_multiplier: 1.4,
-            jump_velocity: -300.0,
+            jump_velocity: -320.0,
             jump_buffer_time: 0.12,
             coyote_time: 0.10,
             jump_release_velocity_factor: 0.5,

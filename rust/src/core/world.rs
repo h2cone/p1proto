@@ -4,8 +4,25 @@ use super::progress;
 
 pub type RoomId = (i32, i32);
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RoomSize {
+    pub width: f32,
+    pub height: f32,
+}
+
+impl RoomSize {
+    pub const fn new(width: f32, height: f32) -> Self {
+        Self { width, height }
+    }
+
+    pub fn vector(self) -> Vector2 {
+        Vector2::new(self.width, self.height)
+    }
+}
+
 pub const ROOM_WIDTH: f32 = 320.0;
 pub const ROOM_HEIGHT: f32 = 240.0;
+pub const DEFAULT_ROOM_SIZE: RoomSize = RoomSize::new(ROOM_WIDTH, ROOM_HEIGHT);
 pub const PLAYER_WIDTH: f32 = 16.0;
 pub const PLAYER_HEIGHT: f32 = 24.0;
 
@@ -53,11 +70,19 @@ impl SpawnResolver {
 
 pub struct BoundaryDetector {
     pub cross_threshold: f32,
+    room_size: RoomSize,
 }
 
 impl BoundaryDetector {
     pub fn new(cross_threshold: f32) -> Self {
-        Self { cross_threshold }
+        Self::with_room_size(cross_threshold, DEFAULT_ROOM_SIZE)
+    }
+
+    pub fn with_room_size(cross_threshold: f32, room_size: RoomSize) -> Self {
+        Self {
+            cross_threshold,
+            room_size,
+        }
     }
 
     pub fn check_transition(
@@ -75,16 +100,16 @@ impl BoundaryDetector {
             if self.should_trigger(overflow, PLAYER_WIDTH) {
                 return Some(TransitionCheck {
                     target_room: (current_room.0 - 1, current_room.1),
-                    new_position: Vector2::new(player_pos.x + ROOM_WIDTH, player_pos.y),
+                    new_position: Vector2::new(player_pos.x + self.room_size.width, player_pos.y),
                 });
             }
         } else if player_velocity.x > 0.0 {
             let player_right = player_pos.x + half_width;
-            let overflow = player_right - ROOM_WIDTH;
+            let overflow = player_right - self.room_size.width;
             if self.should_trigger(overflow, PLAYER_WIDTH) {
                 return Some(TransitionCheck {
                     target_room: (current_room.0 + 1, current_room.1),
-                    new_position: Vector2::new(player_pos.x - ROOM_WIDTH, player_pos.y),
+                    new_position: Vector2::new(player_pos.x - self.room_size.width, player_pos.y),
                 });
             }
         }
@@ -95,16 +120,16 @@ impl BoundaryDetector {
             if self.should_trigger(overflow, PLAYER_HEIGHT) {
                 return Some(TransitionCheck {
                     target_room: (current_room.0, current_room.1 - 1),
-                    new_position: Vector2::new(player_pos.x, player_pos.y + ROOM_HEIGHT),
+                    new_position: Vector2::new(player_pos.x, player_pos.y + self.room_size.height),
                 });
             }
         } else if player_velocity.y > 0.0 {
             let player_bottom = player_pos.y + half_height;
-            let overflow = player_bottom - ROOM_HEIGHT;
+            let overflow = player_bottom - self.room_size.height;
             if self.should_trigger(overflow, PLAYER_HEIGHT) {
                 return Some(TransitionCheck {
                     target_room: (current_room.0, current_room.1 + 1),
-                    new_position: Vector2::new(player_pos.x, player_pos.y - ROOM_HEIGHT),
+                    new_position: Vector2::new(player_pos.x, player_pos.y - self.room_size.height),
                 });
             }
         }
@@ -142,26 +167,50 @@ mod tests {
     #[test]
     fn no_transition_when_not_at_boundary() {
         let detector = BoundaryDetector::new(0.5);
-        let result =
-            detector.check_transition(Vector2::new(160.0, 90.0), Vector2::new(10.0, 0.0), (0, 1));
+        let result = detector.check_transition(
+            Vector2::new(ROOM_WIDTH * 0.5, ROOM_HEIGHT * 0.5),
+            Vector2::new(10.0, 0.0),
+            (0, 1),
+        );
         assert!(result.is_none());
     }
 
     #[test]
     fn transition_right_when_threshold_exceeded() {
         let detector = BoundaryDetector::new(0.5);
-        let result =
-            detector.check_transition(Vector2::new(320.0, 90.0), Vector2::new(10.0, 0.0), (0, 1));
+        let result = detector.check_transition(
+            Vector2::new(ROOM_WIDTH, 180.0),
+            Vector2::new(10.0, 0.0),
+            (0, 1),
+        );
         assert!(result.is_some());
         let check = result.unwrap();
         assert_eq!(check.target_room, (1, 1));
     }
 
     #[test]
+    fn transition_uses_configured_room_size() {
+        let detector = BoundaryDetector::with_room_size(0.5, RoomSize::new(480.0, 360.0));
+        let result =
+            detector.check_transition(Vector2::new(480.0, 180.0), Vector2::new(10.0, 0.0), (0, 1));
+
+        assert_eq!(
+            result,
+            Some(TransitionCheck {
+                target_room: (1, 1),
+                new_position: Vector2::new(0.0, 180.0),
+            })
+        );
+    }
+
+    #[test]
     fn no_transition_when_moving_wrong_direction() {
         let detector = BoundaryDetector::new(0.5);
-        let result =
-            detector.check_transition(Vector2::new(320.0, 90.0), Vector2::new(-10.0, 0.0), (0, 1));
+        let result = detector.check_transition(
+            Vector2::new(ROOM_WIDTH, 180.0),
+            Vector2::new(-10.0, 0.0),
+            (0, 1),
+        );
         assert!(result.is_none());
     }
 
@@ -179,7 +228,7 @@ mod tests {
     fn transition_down() {
         let detector = BoundaryDetector::new(0.5);
         let result = detector.check_transition(
-            Vector2::new(160.0, 240.0 + 12.0),
+            Vector2::new(ROOM_WIDTH * 0.5, ROOM_HEIGHT + PLAYER_HEIGHT * 0.5),
             Vector2::new(0.0, 10.0),
             (0, 1),
         );
@@ -192,7 +241,7 @@ mod tests {
     fn transition_up() {
         let detector = BoundaryDetector::new(0.5);
         let result =
-            detector.check_transition(Vector2::new(160.0, -12.0), Vector2::new(0.0, -10.0), (0, 1));
+            detector.check_transition(Vector2::new(240.0, -12.0), Vector2::new(0.0, -10.0), (0, 1));
         assert!(result.is_some());
         let check = result.unwrap();
         assert_eq!(check.target_room, (0, 0));

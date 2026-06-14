@@ -99,7 +99,7 @@ impl RoomSession {
 mod tests {
     use super::*;
     use crate::core::progress;
-    use crate::core::world::SpawnResolver;
+    use crate::core::world::{ROOM_WIDTH, SpawnResolver};
 
     #[test]
     fn resolves_start_from_pending_checkpoint() {
@@ -127,7 +127,7 @@ mod tests {
 
         let plan = session.plan_boundary_transition(
             &detector,
-            Vector2::new(320.0, 90.0),
+            Vector2::new(ROOM_WIDTH, 90.0),
             Vector2::new(10.0, 0.0),
             |room| room == (1, 1),
         );

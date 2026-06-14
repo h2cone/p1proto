@@ -1,5 +1,4 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
-use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "xtask", about = "Cross-platform project workflow tasks")]
@@ -13,7 +12,6 @@ pub enum Command {
     Run(RunArgs),
     Export(ExportArgs),
     UpdateGdext(UpdateGdextArgs),
-    ResizeLdtkRooms(ResizeLdtkRoomsArgs),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -70,24 +68,6 @@ pub struct UpdateGdextArgs {
     pub skip_lockfile: bool,
 }
 
-#[derive(Debug, Args)]
-pub struct ResizeLdtkRoomsArgs {
-    #[arg(long, default_value = "godot/pipeline/ldtk/tilemap.ldtk")]
-    pub path: PathBuf,
-    #[arg(long, default_value_t = 480)]
-    pub width: i64,
-    #[arg(long, default_value_t = 360)]
-    pub height: i64,
-    #[arg(long)]
-    pub insert_x: Option<i64>,
-    #[arg(long)]
-    pub insert_y: Option<i64>,
-    #[arg(long)]
-    pub dry_run: bool,
-    #[arg(long)]
-    pub report_directory: Option<PathBuf>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,5 +84,12 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn resize_ldtk_rooms_is_not_registered() {
+        let error = Cli::try_parse_from(["xtask", "resize-ldtk-rooms"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::InvalidSubcommand);
     }
 }

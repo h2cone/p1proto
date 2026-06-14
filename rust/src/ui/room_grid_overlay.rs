@@ -3,7 +3,6 @@ use godot::classes::{Control, IControl, Input, InputMap};
 use godot::prelude::*;
 
 const DEFAULT_GRID_SPACING: f32 = 8.0;
-const DEFAULT_ROOM_SIZE: Vector2 = Vector2::new(320.0, 240.0);
 const GRID_EPSILON: f32 = 0.001;
 const GRID_ACTION: &str = "ui_grid_view";
 
@@ -27,7 +26,7 @@ impl IControl for RoomGridOverlay {
     fn init(base: Base<Control>) -> Self {
         Self {
             base,
-            room_size: DEFAULT_ROOM_SIZE,
+            room_size: default_room_size(),
             grid_spacing: DEFAULT_GRID_SPACING,
             line_color: Color::from_rgba(1.0, 1.0, 1.0, 0.24),
             line_width: 1.0,
@@ -93,6 +92,10 @@ impl RoomGridOverlay {
             normalize_extent(self.room_size.y).min(normalize_extent(control_size.y)),
         )
     }
+}
+
+fn default_room_size() -> Vector2 {
+    crate::core::world::DEFAULT_ROOM_SIZE.vector()
 }
 
 fn is_grid_action_pressed() -> bool {
@@ -175,5 +178,13 @@ mod tests {
     fn invalid_spacing_clamps_to_safe_interval() {
         assert_eq!(grid_line_positions(3.0, 0.0), vec![0.0, 3.0]);
         assert_eq!(grid_line_positions(3.0, f32::NAN), vec![0.0, 3.0]);
+    }
+
+    #[test]
+    fn default_room_size_matches_runtime_room_size() {
+        assert_eq!(
+            default_room_size(),
+            crate::core::world::DEFAULT_ROOM_SIZE.vector()
+        );
     }
 }
