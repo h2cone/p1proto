@@ -36,22 +36,34 @@ alignment = 1
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 16
 text = "PLAY"
 
 [node name="ContinueButton" type="Button" parent="VBoxContainer" unique_id=969078655]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 16
 text = "Continue"
 
 [node name="QuitButton" type="Button" parent="VBoxContainer" unique_id=79620427]
 custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 16
 text = "QUIT"
 
 [node name="Label" type="Label" parent="VBoxContainer" unique_id=1468057076]
 layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 12
 text = "← → Move | SPACE Jump | ESC Pause"
 horizontal_alignment = 1
 vertical_alignment = 1

@@ -110,6 +110,7 @@ fn resolve_command(command: &str) -> Result<PathBuf> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     #[test]
@@ -142,5 +143,56 @@ mod tests {
         assert!(import_needed(temp.path()));
         fs::write(temp.path().join(".godot/imported/asset.import"), "").unwrap();
         assert!(!import_needed(temp.path()));
+    }
+
+    #[test]
+    fn pause_menu_draws_above_player_water_overlay() {
+        let root = project_root();
+        let pause_menu = fs::read_to_string(root.join("godot/ui/pause_menu.tscn")).unwrap();
+        let player = fs::read_to_string(root.join("godot/player/player.tscn")).unwrap();
+
+        let pause_menu_z =
+            scene_node_i32_property(&pause_menu, "PauseMenu", "z_index").unwrap_or(0);
+        let water_body_z =
+            scene_node_i32_property(&player, "WaterBodyOverlay", "z_index").unwrap_or(0);
+        let water_surface_z =
+            scene_node_i32_property(&player, "WaterSurfaceOverlay", "z_index").unwrap_or(0);
+        let highest_water_overlay_z = water_body_z.max(water_surface_z);
+
+        assert!(
+            pause_menu_z > highest_water_overlay_z,
+            "PauseMenu z_index ({pause_menu_z}) must be above player water overlay z_index ({highest_water_overlay_z})"
+        );
+    }
+
+    fn project_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("xtask should live inside the project root")
+            .to_path_buf()
+    }
+
+    fn scene_node_i32_property(scene: &str, node_name: &str, property: &str) -> Option<i32> {
+        let header = format!("[node name=\"{node_name}\"");
+        let mut in_node = false;
+
+        for line in scene.lines() {
+            if line.starts_with("[node ") {
+                in_node = line.starts_with(&header);
+                continue;
+            }
+
+            if !in_node {
+                continue;
+            }
+
+            let Some(value) = line.trim().strip_prefix(&format!("{property} = ")) else {
+                continue;
+            };
+
+            return value.parse().ok();
+        }
+
+        None
     }
 }

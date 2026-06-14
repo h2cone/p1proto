@@ -3,6 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://c8rdw12dkmn6m" path="res://ui/star_icon.tres" id="1_star"]
 
 [node name="PauseMenu" type="PauseMenu"]
+z_index = 100
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -38,12 +39,18 @@ alignment = 1
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 16
 text = "RESUME"
 
 [node name="QuitButton" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(200, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 16
 text = "QUIT TO MENU"
 
 [node name="StarDisplay" type="Control" parent="."]
@@ -63,6 +70,8 @@ texture = ExtResource("1_star")
 
 [node name="Label" type="Label" parent="StarDisplay/HBoxContainer"]
 layout_mode = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 12
 text = "0"
 vertical_alignment = 1
