@@ -25,8 +25,7 @@ pub fn normalize_extension_list(godot_dir: &Path) -> Result<()> {
         }
     }
 
-    if godot_dir.join("rust.gdextension").exists() && !kept.iter().any(|line| line == default_ext)
-    {
+    if godot_dir.join("rust.gdextension").exists() && !kept.iter().any(|line| line == default_ext) {
         kept.insert(0, default_ext.to_owned());
     }
 

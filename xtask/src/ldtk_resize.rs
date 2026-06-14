@@ -122,11 +122,17 @@ pub fn execute(paths: &ProjectPaths, args: ResizeLdtkRoomsArgs) -> Result<()> {
                 &report_dir.join("before_semantics.json"),
                 &result.before_semantics,
             )?;
-            write_json_report(&report_dir.join("after_semantics.json"), &result.after_semantics)?;
+            write_json_report(
+                &report_dir.join("after_semantics.json"),
+                &result.after_semantics,
+            )?;
             write_json_report(&report_dir.join("dry_run_report.json"), &result.report)?;
             write_utf8_no_bom_file(&report_dir.join("dry_run_project.json"), &project_json)?;
         }
-        println!("Dry run only. Re-run without --dry-run to update {}", path.display());
+        println!(
+            "Dry run only. Re-run without --dry-run to update {}",
+            path.display()
+        );
         print_report_summary(&result.report);
         return Ok(());
     }
@@ -159,7 +165,11 @@ pub fn resize_project_with_options(
     let mut level_reports = Vec::new();
 
     set_property(&mut project, "worldGridWidth", json!(options.target.width))?;
-    set_property(&mut project, "worldGridHeight", json!(options.target.height))?;
+    set_property(
+        &mut project,
+        "worldGridHeight",
+        json!(options.target.height),
+    )?;
     set_property(
         &mut project,
         "defaultLevelWidth",
@@ -270,7 +280,9 @@ pub fn resize_project_with_options(
         "validationErrors": validation_errors,
     });
 
-    if let Some(errors) = report["validationErrors"].as_array().filter(|errors| !errors.is_empty())
+    if let Some(errors) = report["validationErrors"]
+        .as_array()
+        .filter(|errors| !errors.is_empty())
     {
         let joined = errors
             .iter()
@@ -305,7 +317,10 @@ fn resize_level_at_existing_size(
 
     let mut held_entities = 0;
     let mut layer_reports = Vec::new();
-    if let Some(layers) = level.get_mut("layerInstances").and_then(Value::as_array_mut) {
+    if let Some(layers) = level
+        .get_mut("layerInstances")
+        .and_then(Value::as_array_mut)
+    {
         for layer in layers {
             let cell_width = size.width / grid_size;
             let cell_height = size.height / grid_size;
@@ -390,7 +405,10 @@ fn resize_expanding_level(
     let mut level_risks = Vec::new();
     let mut layer_reports = Vec::new();
 
-    if let Some(layers) = level.get_mut("layerInstances").and_then(Value::as_array_mut) {
+    if let Some(layers) = level
+        .get_mut("layerInstances")
+        .and_then(Value::as_array_mut)
+    {
         for layer in layers {
             set_property(layer, "__cWid", json!(new_cell_width))?;
             set_property(layer, "__cHei", json!(new_cell_height))?;
@@ -765,13 +783,7 @@ fn resize_tiles(
             moved += 1;
         }
 
-        set_tile_position(
-            &mut record.tile,
-            new_x,
-            new_y,
-            grid_size,
-            new_cell_width,
-        )?;
+        set_tile_position(&mut record.tile, new_x, new_y, grid_size, new_cell_width)?;
         output.push(record.tile.clone());
         occupied_new.insert((new_x, new_y));
     }
@@ -917,16 +929,8 @@ fn resize_entities(
             "__grid",
             json!([new_x / params.grid_size, new_y / params.grid_size]),
         )?;
-        set_property(
-            entity,
-            "__worldX",
-            json!(params.level_world_x + new_x),
-        )?;
-        set_property(
-            entity,
-            "__worldY",
-            json!(params.level_world_y + new_y),
-        )?;
+        set_property(entity, "__worldX", json!(params.level_world_x + new_x))?;
+        set_property(entity, "__worldY", json!(params.level_world_y + new_y))?;
     }
 
     Ok(EntityResizeResult { moved, held, risks })
@@ -1225,7 +1229,8 @@ fn write_json_report(path: &Path, value: &Value) -> Result<()> {
 }
 
 fn write_utf8_no_bom_file(path: &Path, content: &str) -> Result<()> {
-    fs::write(path, content.as_bytes()).with_context(|| format!("failed to write {}", path.display()))
+    fs::write(path, content.as_bytes())
+        .with_context(|| format!("failed to write {}", path.display()))
 }
 
 fn print_report_summary(report: &Value) {
@@ -1391,7 +1396,14 @@ mod tests {
     #[test]
     fn idempotent_when_level_already_matches_target_size() {
         let project = test_project();
-        let resized = resize_project(project.clone(), GridSize { width: 32, height: 24 }).unwrap();
+        let resized = resize_project(
+            project.clone(),
+            GridSize {
+                width: 32,
+                height: 24,
+            },
+        )
+        .unwrap();
         assert_eq!(resized, project);
     }
 
@@ -1429,7 +1441,10 @@ mod tests {
         let result = resize_project_with_options(
             project,
             ResizeOptions {
-                target: GridSize { width: 48, height: 32 },
+                target: GridSize {
+                    width: 48,
+                    height: 32,
+                },
                 insert_x: Some(16),
                 insert_y: Some(16),
             },
@@ -1444,7 +1459,12 @@ mod tests {
 
         let level = &project["levels"][0];
         assert_eq!(
-            json!([level["worldX"], level["worldY"], level["pxWid"], level["pxHei"]]),
+            json!([
+                level["worldX"],
+                level["worldY"],
+                level["pxWid"],
+                level["pxHei"]
+            ]),
             json!([48, 64, 48, 32])
         );
 
@@ -1457,11 +1477,25 @@ mod tests {
         let key = entity(entities, "key-1");
         let portal = entity(entities, "portal-1");
         assert_eq!(
-            json!([key["px"][0], key["px"][1], key["__grid"][0], key["__grid"][1], key["__worldX"], key["__worldY"]]),
+            json!([
+                key["px"][0],
+                key["px"][1],
+                key["__grid"][0],
+                key["__grid"][1],
+                key["__worldX"],
+                key["__worldY"]
+            ]),
             json!([40, 8, 5, 1, 88, 72])
         );
         assert_eq!(
-            json!([portal["px"][0], portal["px"][1], portal["__grid"][0], portal["__grid"][1], portal["__worldX"], portal["__worldY"]]),
+            json!([
+                portal["px"][0],
+                portal["px"][1],
+                portal["__grid"][0],
+                portal["__grid"][1],
+                portal["__worldX"],
+                portal["__worldY"]
+            ]),
             json!([0, 0, 0, 0, 48, 64])
         );
         assert_eq!(
@@ -1483,7 +1517,10 @@ mod tests {
         let result = resize_project_with_options(
             test_project(),
             ResizeOptions {
-                target: GridSize { width: 48, height: 32 },
+                target: GridSize {
+                    width: 48,
+                    height: 32,
+                },
                 insert_x: Some(16),
                 insert_y: Some(16),
             },
@@ -1503,7 +1540,10 @@ mod tests {
             .collect::<Vec<_>>();
         coords.sort_by_key(|(x, y)| (*y, *x));
 
-        assert_eq!(coords, vec![(8, 24), (16, 24), (24, 24), (32, 24), (40, 24)]);
+        assert_eq!(
+            coords,
+            vec![(8, 24), (16, 24), (24, 24), (32, 24), (40, 24)]
+        );
     }
 
     #[test]
@@ -1521,7 +1561,10 @@ mod tests {
         let first = resize_project_with_options(
             test_project(),
             ResizeOptions {
-                target: GridSize { width: 48, height: 32 },
+                target: GridSize {
+                    width: 48,
+                    height: 32,
+                },
                 insert_x: Some(16),
                 insert_y: Some(16),
             },
@@ -1531,7 +1574,10 @@ mod tests {
         let second = resize_project_with_options(
             first.project,
             ResizeOptions {
-                target: GridSize { width: 48, height: 32 },
+                target: GridSize {
+                    width: 48,
+                    height: 32,
+                },
                 insert_x: None,
                 insert_y: None,
             },

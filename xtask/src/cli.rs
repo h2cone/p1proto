@@ -94,8 +94,7 @@ mod tests {
 
     #[test]
     fn parses_run_release_editor() {
-        let cli =
-            Cli::try_parse_from(["xtask", "run", "--build", "release", "--editor"]).unwrap();
+        let cli = Cli::try_parse_from(["xtask", "run", "--build", "release", "--editor"]).unwrap();
         assert!(matches!(
             cli.command,
             Command::Run(RunArgs {

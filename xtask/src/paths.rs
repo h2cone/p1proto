@@ -53,7 +53,11 @@ mod tests {
         let temp = TempDir::new().unwrap();
         fs::create_dir(temp.path().join("rust")).unwrap();
         fs::create_dir(temp.path().join("godot")).unwrap();
-        fs::write(temp.path().join("rust/Cargo.toml"), "[package]\nname='rust'\n").unwrap();
+        fs::write(
+            temp.path().join("rust/Cargo.toml"),
+            "[package]\nname='rust'\n",
+        )
+        .unwrap();
         fs::write(temp.path().join("godot/project.godot"), "; godot\n").unwrap();
 
         let paths = ProjectPaths::from_repo_root(temp.path().to_path_buf()).unwrap();
