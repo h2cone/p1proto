@@ -58,10 +58,12 @@ pub fn capture_stdout(program: &str, cwd: &Path, args: &[&str]) -> Result<String
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+#[allow(dead_code)]
 pub fn string_args<const N: usize>(args: [&str; N]) -> Vec<String> {
     args.into_iter().map(String::from).collect()
 }
 
+#[allow(dead_code)]
 pub fn push_os_arg(args: &mut Vec<String>, value: impl AsRef<OsStr>) {
     args.push(value.as_ref().to_string_lossy().into_owned());
 }

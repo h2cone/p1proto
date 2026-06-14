@@ -10,6 +10,7 @@ console.log
 # Build artifacts
 build/
 export/
+xtask/target/
 
 # macOS
 .DS_Store

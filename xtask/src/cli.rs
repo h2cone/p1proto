@@ -74,10 +74,14 @@ pub struct UpdateGdextArgs {
 pub struct ResizeLdtkRoomsArgs {
     #[arg(long, default_value = "godot/pipeline/ldtk/tilemap.ldtk")]
     pub path: PathBuf,
-    #[arg(long, default_value_t = 320)]
+    #[arg(long, default_value_t = 480)]
     pub width: i64,
-    #[arg(long, default_value_t = 240)]
+    #[arg(long, default_value_t = 360)]
     pub height: i64,
+    #[arg(long)]
+    pub insert_x: Option<i64>,
+    #[arg(long)]
+    pub insert_y: Option<i64>,
     #[arg(long)]
     pub dry_run: bool,
     #[arg(long)]
