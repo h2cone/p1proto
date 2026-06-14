@@ -4,6 +4,7 @@ mod godot;
 mod paths;
 mod process;
 mod run;
+mod update_gdext;
 
 use anyhow::Result;
 use clap::Parser;
@@ -16,10 +17,7 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Run(args) => run::execute(&paths, args),
         Command::Export(args) => export::execute(&paths, args),
-        Command::UpdateGdext(args) => {
-            println!("update-gdext in {}: {args:?}", paths.repo_root.display());
-            Ok(())
-        }
+        Command::UpdateGdext(args) => update_gdext::execute(&paths, args),
         Command::ResizeLdtkRooms(args) => {
             println!("resize-ldtk-rooms in {}: {args:?}", paths.repo_root.display());
             Ok(())
