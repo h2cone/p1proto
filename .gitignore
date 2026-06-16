@@ -17,4 +17,6 @@ xtask/target/
 
 # superpowers
 .superpowers/
-docs/superpowers/
+
+# docs
+docs/
