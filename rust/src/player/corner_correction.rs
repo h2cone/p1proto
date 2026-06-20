@@ -3,6 +3,7 @@ use godot::{classes::CharacterBody2D, prelude::*};
 const MAX_CORRECTION_PX: i32 = 3;
 const SIDE_NORMAL_THRESHOLD: f32 = 0.7;
 const INTENT_EPSILON: f32 = 0.01;
+const UPWARD_CLEARANCE_PX: f32 = -1.0;
 
 pub fn apply_after_slide(
     body: &mut Gd<CharacterBody2D>,
@@ -53,10 +54,11 @@ fn collision_context(body: &mut Gd<CharacterBody2D>) -> CollisionContext {
 }
 
 fn try_offsets(body: &mut Gd<CharacterBody2D>, directions: [f32; 2], max_px: i32) {
+    let transform = body.get_global_transform();
     for px in 1..=max_px {
         for direction in directions {
             let offset = Vector2::new(direction * px as f32, 0.0);
-            if can_apply_offset(body, offset) {
+            if can_apply_offset(body, transform, offset) {
                 let position = body.get_global_position();
                 godot_print!("[Player] corner correction applied offset={:?}", offset);
                 body.set_global_position(position + offset);
@@ -66,11 +68,38 @@ fn try_offsets(body: &mut Gd<CharacterBody2D>, directions: [f32; 2], max_px: i32
     }
 }
 
-fn can_apply_offset(body: &mut Gd<CharacterBody2D>, offset: Vector2) -> bool {
-    let transform = body.get_global_transform();
-    !body
-        .call("test_move", &[transform.to_variant(), offset.to_variant()])
+fn can_apply_offset(
+    body: &mut Gd<CharacterBody2D>,
+    transform: Transform2D,
+    offset: Vector2,
+) -> bool {
+    let lateral_blocked = motion_collides(body, transform, offset);
+    if lateral_blocked {
+        return false;
+    }
+
+    let upward_probe = Vector2::new(0.0, UPWARD_CLEARANCE_PX);
+    let upward_blocked = motion_collides(body, transform, upward_probe);
+    let shifted_upward_blocked = motion_collides(body, transform.translated(offset), upward_probe);
+
+    correction_candidate_is_corner(false, upward_blocked, shifted_upward_blocked)
+}
+
+fn motion_collides(
+    body: &mut Gd<CharacterBody2D>,
+    transform: Transform2D,
+    motion: Vector2,
+) -> bool {
+    body.call("test_move", &[transform.to_variant(), motion.to_variant()])
         .to::<bool>()
+}
+
+fn correction_candidate_is_corner(
+    lateral_blocked: bool,
+    upward_blocked: bool,
+    shifted_upward_blocked: bool,
+) -> bool {
+    !lateral_blocked && upward_blocked && !shifted_upward_blocked
 }
 
 fn correction_directions(horizontal_intent: f32, side_normal_x: Option<f32>) -> [f32; 2] {
@@ -114,5 +143,25 @@ mod tests {
     #[test]
     fn direction_uses_left_then_right_without_signal() {
         assert_eq!(correction_directions(0.0, None), [-1.0, 1.0]);
+    }
+
+    #[test]
+    fn candidate_requires_lateral_space_and_upward_clearance() {
+        assert!(correction_candidate_is_corner(false, true, false));
+    }
+
+    #[test]
+    fn candidate_rejects_flat_ceiling_that_remains_blocked_after_shift() {
+        assert!(!correction_candidate_is_corner(false, true, true));
+    }
+
+    #[test]
+    fn candidate_rejects_unrelated_side_slide_without_upward_block() {
+        assert!(!correction_candidate_is_corner(false, false, false));
+    }
+
+    #[test]
+    fn candidate_rejects_blocked_lateral_offset() {
+        assert!(!correction_candidate_is_corner(true, true, false));
     }
 }
