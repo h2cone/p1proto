@@ -10,7 +10,7 @@
 [node name="RoomManager" type="GameRoomManager" parent="." unique_id=158921282]
 initial_room = Vector2i(1, 2)
 
-[node name="RoomGridOverlay" type="RoomGridOverlay" parent="."]
+[node name="RoomGridOverlay" type="RoomGridOverlay" parent="." unique_id=1905820459]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
