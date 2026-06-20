@@ -1,5 +1,6 @@
 mod aim_indicator;
 mod animation;
+mod corner_correction;
 mod hazard;
 mod input_adapter;
 mod ladder;
@@ -321,6 +322,9 @@ impl ICharacterBody2D for Player {
 
         self.base_mut().set_velocity(new_velocity);
         self.base_mut().move_and_slide();
+        if water_contact == water::WaterContact::None {
+            corner_correction::apply_after_slide(&mut body, new_velocity, movement_input.direction);
+        }
         self.update_water_overlay(water_contact, body.get_global_position());
 
         let resolved_velocity = self.base().get_velocity();

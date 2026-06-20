@@ -3,7 +3,7 @@
 [ext_resource type="SpriteFrames" path="res://pipeline/aseprite/wizard/jelly_character.res" id="1_oul6g"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_4flbx"]
-size = Vector2(16, 24)
+size = Vector2(14, 22)
 
 [node name="Player" type="Player" unique_id=1247755864]
 aim_indicator_distance = 24.0
@@ -16,6 +16,7 @@ water_swim_rise_velocity = -90.0
 water_swim_descend_velocity = 70.0
 collision_layer = 2
 collision_mask = 7708
+floor_snap_length = 3.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=502388805]
 sprite_frames = ExtResource("1_oul6g")
