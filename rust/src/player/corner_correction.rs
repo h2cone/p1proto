@@ -90,6 +90,7 @@ fn motion_collides(
     transform: Transform2D,
     motion: Vector2,
 ) -> bool {
+    // gdext does not expose CharacterBody2D::test_move as a static Rust method.
     body.call("test_move", &[transform.to_variant(), motion.to_variant()])
         .to::<bool>()
 }
@@ -107,10 +108,10 @@ fn correction_directions(horizontal_intent: f32, side_normal_x: Option<f32>) -> 
         return ordered_pair(horizontal_intent.signum());
     }
 
-    if let Some(normal_x) = side_normal_x {
-        if normal_x.abs() > INTENT_EPSILON {
-            return ordered_pair(-normal_x.signum());
-        }
+    if let Some(normal_x) = side_normal_x
+        && normal_x.abs() > INTENT_EPSILON
+    {
+        return ordered_pair(-normal_x.signum());
     }
 
     [-1.0, 1.0]

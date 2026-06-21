@@ -1,8 +1,38 @@
+use std::fmt;
+
 use godot::prelude::*;
 
 use super::progress;
 
-pub type RoomId = (i32, i32);
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct RoomId {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl RoomId {
+    pub const fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+}
+
+impl From<Vector2i> for RoomId {
+    fn from(value: Vector2i) -> Self {
+        Self::new(value.x, value.y)
+    }
+}
+
+impl From<RoomId> for Vector2i {
+    fn from(value: RoomId) -> Self {
+        Self::new(value.x, value.y)
+    }
+}
+
+impl fmt::Display for RoomId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RoomSize {
@@ -99,7 +129,7 @@ impl BoundaryDetector {
             let overflow = -player_left;
             if self.should_trigger(overflow, PLAYER_WIDTH) {
                 return Some(TransitionCheck {
-                    target_room: (current_room.0 - 1, current_room.1),
+                    target_room: RoomId::new(current_room.x - 1, current_room.y),
                     new_position: Vector2::new(player_pos.x + self.room_size.width, player_pos.y),
                 });
             }
@@ -108,7 +138,7 @@ impl BoundaryDetector {
             let overflow = player_right - self.room_size.width;
             if self.should_trigger(overflow, PLAYER_WIDTH) {
                 return Some(TransitionCheck {
-                    target_room: (current_room.0 + 1, current_room.1),
+                    target_room: RoomId::new(current_room.x + 1, current_room.y),
                     new_position: Vector2::new(player_pos.x - self.room_size.width, player_pos.y),
                 });
             }
@@ -119,7 +149,7 @@ impl BoundaryDetector {
             let overflow = -player_top;
             if self.should_trigger(overflow, PLAYER_HEIGHT) {
                 return Some(TransitionCheck {
-                    target_room: (current_room.0, current_room.1 - 1),
+                    target_room: RoomId::new(current_room.x, current_room.y - 1),
                     new_position: Vector2::new(player_pos.x, player_pos.y + self.room_size.height),
                 });
             }
@@ -128,7 +158,7 @@ impl BoundaryDetector {
             let overflow = player_bottom - self.room_size.height;
             if self.should_trigger(overflow, PLAYER_HEIGHT) {
                 return Some(TransitionCheck {
-                    target_room: (current_room.0, current_room.1 + 1),
+                    target_room: RoomId::new(current_room.x, current_room.y + 1),
                     new_position: Vector2::new(player_pos.x, player_pos.y - self.room_size.height),
                 });
             }
@@ -151,16 +181,24 @@ mod tests {
     use super::*;
     use crate::core::progress;
 
+    fn room(x: i32, y: i32) -> RoomId {
+        RoomId::new(x, y)
+    }
+
     #[test]
     fn falls_back_to_initial_spawn_when_saved_room_is_missing() {
         progress::reset_all();
-        progress::save_checkpoint(progress::DEFAULT_SAVE_SLOT, (9, 9), Vector2::new(1.0, 2.0));
+        progress::save_checkpoint(
+            progress::DEFAULT_SAVE_SLOT,
+            room(9, 9),
+            Vector2::new(1.0, 2.0),
+        );
         assert!(progress::queue_load(progress::DEFAULT_SAVE_SLOT));
 
-        let resolver = SpawnResolver::new((0, 1), Vector2::new(64.0, 64.0));
-        let spawn = resolver.resolve(|room| room != (9, 9));
+        let resolver = SpawnResolver::new(room(0, 1), Vector2::new(64.0, 64.0));
+        let spawn = resolver.resolve(|candidate| candidate != room(9, 9));
 
-        assert_eq!(spawn.room, (0, 1));
+        assert_eq!(spawn.room, room(0, 1));
         assert_eq!(spawn.position, Vector2::new(64.0, 64.0));
     }
 
@@ -170,7 +208,7 @@ mod tests {
         let result = detector.check_transition(
             Vector2::new(ROOM_WIDTH * 0.5, ROOM_HEIGHT * 0.5),
             Vector2::new(10.0, 0.0),
-            (0, 1),
+            room(0, 1),
         );
         assert!(result.is_none());
     }
@@ -181,23 +219,26 @@ mod tests {
         let result = detector.check_transition(
             Vector2::new(ROOM_WIDTH, 180.0),
             Vector2::new(10.0, 0.0),
-            (0, 1),
+            room(0, 1),
         );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.target_room, (1, 1));
+        assert_eq!(check.target_room, room(1, 1));
     }
 
     #[test]
     fn transition_uses_configured_room_size() {
         let detector = BoundaryDetector::with_room_size(0.5, RoomSize::new(480.0, 360.0));
-        let result =
-            detector.check_transition(Vector2::new(480.0, 180.0), Vector2::new(10.0, 0.0), (0, 1));
+        let result = detector.check_transition(
+            Vector2::new(480.0, 180.0),
+            Vector2::new(10.0, 0.0),
+            room(0, 1),
+        );
 
         assert_eq!(
             result,
             Some(TransitionCheck {
-                target_room: (1, 1),
+                target_room: room(1, 1),
                 new_position: Vector2::new(0.0, 180.0),
             })
         );
@@ -209,7 +250,7 @@ mod tests {
         let result = detector.check_transition(
             Vector2::new(ROOM_WIDTH, 180.0),
             Vector2::new(-10.0, 0.0),
-            (0, 1),
+            room(0, 1),
         );
         assert!(result.is_none());
     }
@@ -217,11 +258,14 @@ mod tests {
     #[test]
     fn transition_left() {
         let detector = BoundaryDetector::new(0.5);
-        let result =
-            detector.check_transition(Vector2::new(-8.0, 90.0), Vector2::new(-10.0, 0.0), (1, 1));
+        let result = detector.check_transition(
+            Vector2::new(-8.0, 90.0),
+            Vector2::new(-10.0, 0.0),
+            room(1, 1),
+        );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.target_room, (0, 1));
+        assert_eq!(check.target_room, room(0, 1));
     }
 
     #[test]
@@ -230,20 +274,23 @@ mod tests {
         let result = detector.check_transition(
             Vector2::new(ROOM_WIDTH * 0.5, ROOM_HEIGHT + PLAYER_HEIGHT * 0.5),
             Vector2::new(0.0, 10.0),
-            (0, 1),
+            room(0, 1),
         );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.target_room, (0, 2));
+        assert_eq!(check.target_room, room(0, 2));
     }
 
     #[test]
     fn transition_up() {
         let detector = BoundaryDetector::new(0.5);
-        let result =
-            detector.check_transition(Vector2::new(240.0, -12.0), Vector2::new(0.0, -10.0), (0, 1));
+        let result = detector.check_transition(
+            Vector2::new(240.0, -12.0),
+            Vector2::new(0.0, -10.0),
+            room(0, 1),
+        );
         assert!(result.is_some());
         let check = result.unwrap();
-        assert_eq!(check.target_room, (0, 0));
+        assert_eq!(check.target_room, room(0, 0));
     }
 }

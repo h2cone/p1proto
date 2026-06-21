@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use godot::prelude::*;
 
-type RoomId = (i32, i32);
+use crate::core::world::RoomId;
 
 #[derive(Default)]
 pub struct WorldMapModel {
@@ -23,7 +23,7 @@ impl WorldMapModel {
         cell_gap: Vector2,
         control_size: Vector2,
     ) {
-        rooms.sort_by_key(|(x, y)| (*y, *x));
+        rooms.sort_by_key(|room| (room.y, room.x));
 
         self.explored_rooms.clear();
         self.explored_set.clear();
@@ -37,18 +37,18 @@ impl WorldMapModel {
             return;
         }
 
-        let mut min_x = rooms[0].0;
-        let mut max_x = rooms[0].0;
-        let mut min_y = rooms[0].1;
-        let mut max_y = rooms[0].1;
+        let mut min_x = rooms[0].x;
+        let mut max_x = rooms[0].x;
+        let mut min_y = rooms[0].y;
+        let mut max_y = rooms[0].y;
 
-        for (x, y) in rooms {
-            self.explored_rooms.push(Vector2i::new(x, y));
-            self.explored_set.insert((x, y));
-            min_x = min_x.min(x);
-            max_x = max_x.max(x);
-            min_y = min_y.min(y);
-            max_y = max_y.max(y);
+        for room in rooms {
+            self.explored_rooms.push(room.into());
+            self.explored_set.insert(room);
+            min_x = min_x.min(room.x);
+            max_x = max_x.max(room.x);
+            min_y = min_y.min(room.y);
+            max_y = max_y.max(room.y);
         }
 
         self.min_room = Vector2i::new(min_x, min_y);
@@ -70,7 +70,7 @@ impl WorldMapModel {
 
     pub fn select_current_room(&mut self, room: Option<Vector2i>) -> bool {
         if let Some(room) = room {
-            let key = (room.x, room.y);
+            let key = RoomId::from(room);
             if self.explored_set.contains(&key) {
                 self.selected_room = Some(key);
                 return true;
@@ -78,7 +78,7 @@ impl WorldMapModel {
         }
 
         if let Some(room) = self.explored_rooms.first() {
-            self.selected_room = Some((room.x, room.y));
+            self.selected_room = Some(RoomId::from(*room));
             return true;
         }
 
@@ -107,7 +107,7 @@ impl WorldMapModel {
             return false;
         }
 
-        let room = (self.min_room.x + cell_x, self.min_room.y + cell_y);
+        let room = RoomId::new(self.min_room.x + cell_x, self.min_room.y + cell_y);
         if self.explored_set.contains(&room) {
             self.selected_room = Some(room);
             return true;
@@ -129,7 +129,7 @@ impl WorldMapModel {
         let room = self.selected_room?;
         self.explored_set
             .contains(&room)
-            .then_some(self.room_to_pos(Vector2i::new(room.0, room.1)))
+            .then_some(self.room_to_pos(room.into()))
     }
 
     pub fn room_to_pos(&self, room: Vector2i) -> Vector2 {
@@ -145,18 +145,22 @@ impl WorldMapModel {
 mod tests {
     use super::*;
 
+    fn room(x: i32, y: i32) -> RoomId {
+        RoomId::new(x, y)
+    }
+
     #[test]
     fn selects_current_room_when_explored() {
         let mut model = WorldMapModel::default();
         model.refresh_explored(
-            vec![(0, 1), (1, 1)],
+            vec![room(0, 1), room(1, 1)],
             Vector2::new(18.0, 18.0),
             Vector2::new(6.0, 6.0),
             Vector2::new(200.0, 200.0),
         );
 
         assert!(model.select_current_room(Some(Vector2i::new(1, 1))));
-        assert_eq!(model.selected_room(), Some((1, 1)));
+        assert_eq!(model.selected_room(), Some(room(1, 1)));
     }
 
     #[test]
@@ -165,7 +169,7 @@ mod tests {
         let cell_size = Vector2::new(18.0, 18.0);
         let cell_gap = Vector2::new(6.0, 6.0);
         model.refresh_explored(
-            vec![(0, 0), (1, 0)],
+            vec![room(0, 0), room(1, 0)],
             cell_size,
             cell_gap,
             Vector2::new(100.0, 50.0),

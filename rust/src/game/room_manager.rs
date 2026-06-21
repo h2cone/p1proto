@@ -7,10 +7,11 @@ use crate::core::session::{DeathPlan, RoomSession, RoomTransitionPlan, Transitio
 use crate::core::world::{BoundaryDetector, RoomId, SpawnResolver};
 use crate::save::{self, DEFAULT_SAVE_SLOT};
 
-const INITIAL_ROOM: RoomId = (0, 1);
+const INITIAL_ROOM: RoomId = RoomId::new(0, 1);
 const INITIAL_PLAYER_POS: Vector2 = Vector2::new(64.0, 64.0);
 const PLAYER_SCENE_PATH: &str = "res://player/player.tscn";
 const ROOM_SCENE_PATTERN: &str = "res://pipeline/ldtk/levels/Room_{x}_{y}.scn";
+const GAME_SCENE_PATH: &str = "res://game.tscn";
 const TRANSITION_THRESHOLD: f32 = 0.5;
 const ENTITY_LAYER_NAME: &str = "Entities";
 const DEFAULT_SPAWN_POS: Vector2 = Vector2::new(64.0, 64.0);
@@ -35,7 +36,7 @@ impl INode2D for GameRoomManager {
     fn init(base: Base<Node2D>) -> Self {
         Self {
             base,
-            initial_room: Vector2i::new(INITIAL_ROOM.0, INITIAL_ROOM.1),
+            initial_room: INITIAL_ROOM.into(),
             initial_player_pos: INITIAL_PLAYER_POS,
             room_runtime: RoomRuntime::new(ROOM_SCENE_PATTERN),
             player_runtime: PlayerRuntime::new(PLAYER_SCENE_PATH),
@@ -48,7 +49,7 @@ impl INode2D for GameRoomManager {
     fn ready(&mut self) {
         godot_print!("[RoomManager] ready - initializing room transition system");
 
-        let initial_room = (self.initial_room.x, self.initial_room.y);
+        let initial_room = RoomId::from(self.initial_room);
         let initial_pos = self.initial_player_pos;
         self.spawn_resolver = SpawnResolver::new(initial_room, initial_pos);
         self.room_session = RoomSession::new(initial_room);
@@ -61,7 +62,7 @@ impl INode2D for GameRoomManager {
 
         let mut root = self.to_gd().upcast::<Node2D>();
         match self.room_runtime.load_and_add_room(&mut root, spawn.room) {
-            Some(mut room_node) => {
+            Ok(mut room_node) => {
                 self.finalize_room_load(&room_node, spawn.room);
                 if self.player_runtime.spawn_into_room(
                     &mut room_node,
@@ -72,8 +73,8 @@ impl INode2D for GameRoomManager {
                 }
                 self.room_runtime.set_current_room(room_node);
             }
-            None => {
-                godot_error!("Failed to load room at {:?}", spawn.room);
+            Err(error) => {
+                godot_error!("Failed to load starting room: {}", error);
             }
         }
     }
@@ -136,7 +137,7 @@ impl GameRoomManager {
         self.room_runtime.unload_current_room(&mut root);
 
         match self.room_runtime.load_and_add_room(&mut root, plan.to_room) {
-            Some(mut new_room) => {
+            Ok(mut new_room) => {
                 let spawn_pos = self.resolve_transition_spawn(&new_room, plan.spawn);
                 player.set_position(spawn_pos);
                 new_room.add_child(&*player);
@@ -150,8 +151,8 @@ impl GameRoomManager {
                     spawn_pos
                 );
             }
-            None => {
-                godot_error!("Failed to load target room {:?}", plan.to_room);
+            Err(error) => {
+                godot_error!("Failed to load target room: {}", error);
                 root.add_child(&*player);
             }
         }
@@ -178,7 +179,7 @@ impl GameRoomManager {
 
     #[func]
     fn on_portal_teleport_requested(&mut self, destination_room: Vector2i) {
-        let target = (destination_room.x, destination_room.y);
+        let target = RoomId::from(destination_room);
         let plan = {
             let room_runtime = &mut self.room_runtime;
             self.room_session
@@ -215,7 +216,9 @@ impl GameRoomManager {
         }
 
         let mut tree = self.base().get_tree();
-        let _result = tree.change_scene_to_file("res://game.tscn");
+        if let Err(error) = tree.change_scene_to_file(GAME_SCENE_PATH).into_result() {
+            godot_error!("Failed to change scene to {}: {:?}", GAME_SCENE_PATH, error);
+        }
     }
 
     #[func]
@@ -224,7 +227,6 @@ impl GameRoomManager {
     }
 
     pub(crate) fn current_room_vector(&self) -> Vector2i {
-        let (x, y) = self.room_session.current_room();
-        Vector2i::new(x, y)
+        self.room_session.current_room().into()
     }
 }

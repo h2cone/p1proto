@@ -144,10 +144,10 @@ impl Ladder {
 
         self.draw_ladder_region(
             &texture,
-            x,
-            top_y,
-            self.width_px,
-            cap_height,
+            Rect2::new(
+                Vector2::new(x, top_y),
+                Vector2::new(self.width_px, cap_height),
+            ),
             0.0,
             cap_height,
         );
@@ -159,10 +159,10 @@ impl Ladder {
         if self.length_px > cap_height + DRAW_EPSILON_PX {
             self.draw_ladder_region(
                 &texture,
-                x,
-                bottom_y,
-                self.width_px,
-                cap_height,
+                Rect2::new(
+                    Vector2::new(x, bottom_y),
+                    Vector2::new(self.width_px, cap_height),
+                ),
                 SOURCE_BOTTOM_Y_PX,
                 cap_height,
             );
@@ -176,10 +176,10 @@ impl Ladder {
             let source_height = segment_height.min(DEFAULT_RUNG_PITCH_PX);
             self.draw_ladder_region(
                 texture,
-                x,
-                y,
-                self.width_px,
-                segment_height,
+                Rect2::new(
+                    Vector2::new(x, y),
+                    Vector2::new(self.width_px, segment_height),
+                ),
                 SOURCE_MID_Y_PX,
                 source_height,
             );
@@ -190,14 +190,10 @@ impl Ladder {
     fn draw_ladder_region(
         &mut self,
         texture: &Gd<Texture2D>,
-        x: f32,
-        y: f32,
-        width: f32,
-        height: f32,
+        rect: Rect2,
         source_y: f32,
         source_height: f32,
     ) {
-        let rect = Rect2::new(Vector2::new(x, y), Vector2::new(width, height));
         let source_rect = Rect2::new(
             Vector2::new(0.0, source_y),
             Vector2::new(DEFAULT_WIDTH_PX, source_height),

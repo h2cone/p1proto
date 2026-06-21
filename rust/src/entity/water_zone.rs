@@ -23,6 +23,15 @@ const SURFACE_LOOP_FRAME_COUNT: i32 = 4;
 const FILL_LOOP_FRAME_COUNT: i32 = 2;
 pub const WATER_ZONE_GROUP: &str = "water_zone";
 
+struct AnimatedTileStrip<'a> {
+    container_path: &'a str,
+    template_path: &'a str,
+    animation: &'a str,
+    count: usize,
+    start: Vector2,
+    step_x: f32,
+}
+
 /// Rectangular water volume driven by an LDtk entity size.
 #[derive(GodotClass)]
 #[class(tool, base=Area2D)]
@@ -154,15 +163,14 @@ impl WaterZone {
         let top_y = -self.height_px * 0.5;
         let start_x = -self.width_px * 0.5;
         let count = tile_count_for_dimension(self.width_px, SURFACE_TILE_WIDTH_PX);
-        self.rebuild_animated_tiles(
-            SURFACE_TILES_PATH,
-            SURFACE_TEMPLATE_PATH,
-            "surface_loop",
+        self.rebuild_animated_tiles(AnimatedTileStrip {
+            container_path: SURFACE_TILES_PATH,
+            template_path: SURFACE_TEMPLATE_PATH,
+            animation: "surface_loop",
             count,
-            start_x,
-            top_y,
-            SURFACE_TILE_WIDTH_PX,
-        );
+            start: Vector2::new(start_x, top_y),
+            step_x: SURFACE_TILE_WIDTH_PX,
+        });
     }
 
     fn rebuild_fill_tiles(&mut self) {
@@ -192,26 +200,19 @@ impl WaterZone {
         }
     }
 
-    fn rebuild_animated_tiles(
-        &mut self,
-        container_path: &str,
-        template_path: &str,
-        animation: &str,
-        count: usize,
-        start_x: f32,
-        y: f32,
-        step_x: f32,
-    ) {
-        let Some(mut container) = self.base().try_get_node_as::<Node2D>(container_path) else {
+    fn rebuild_animated_tiles(&mut self, strip: AnimatedTileStrip) {
+        let Some(mut container) = self.base().try_get_node_as::<Node2D>(strip.container_path)
+        else {
             return;
         };
         clear_children(&mut container);
 
-        for index in 0..count {
+        for index in 0..strip.count {
             let initial_frame = (index as i32) % SURFACE_LOOP_FRAME_COUNT;
-            if let Some(mut tile) = self.duplicate_template(template_path, animation, initial_frame)
+            if let Some(mut tile) =
+                self.duplicate_template(strip.template_path, strip.animation, initial_frame)
             {
-                tile.set_position(Vector2::new(start_x + index as f32 * step_x, y));
+                tile.set_position(strip.start + Vector2::new(index as f32 * strip.step_x, 0.0));
                 container.add_child(&tile);
             }
         }

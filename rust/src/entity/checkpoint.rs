@@ -1,7 +1,7 @@
 use godot::classes::{AnimatedSprite2D, Area2D, IArea2D, Node};
 use godot::prelude::*;
 
-use super::persistence::{find_saved_checkpoint, save_checkpoint};
+use super::persistence::PersistentEntityRef;
 
 const POSITION_MATCH_EPSILON: f32 = 1.0;
 
@@ -14,6 +14,7 @@ pub struct Checkpoint {
     sprite: OnReady<Gd<AnimatedSprite2D>>,
     #[export]
     room_coords: Vector2i,
+    persistent_entity: Option<PersistentEntityRef>,
 }
 
 #[godot_api]
@@ -24,6 +25,7 @@ impl IArea2D for Checkpoint {
             activated: false,
             sprite: OnReady::from_node("AnimatedSprite2D"),
             room_coords: Vector2i::ZERO,
+            persistent_entity: None,
         }
     }
 
@@ -33,6 +35,7 @@ impl IArea2D for Checkpoint {
         self.signals()
             .body_entered()
             .connect_self(Self::on_body_entered);
+        self.persistent_entity = Some(self.build_persistent_entity());
         self.restore_if_saved();
     }
 }
@@ -62,11 +65,11 @@ impl Checkpoint {
 
         let room_coords = self.room_coords;
         let position = self.base().get_global_position();
-        let node = self.to_gd().upcast::<Node>();
+        let persistent_entity = self.persistent_entity(position);
         self.signals()
             .checkpoint_activated()
             .emit(room_coords, position);
-        let _snapshot = save_checkpoint(&node, room_coords, position);
+        let _snapshot = persistent_entity.save_checkpoint();
     }
 
     #[func]
@@ -83,13 +86,8 @@ impl Checkpoint {
 
     fn restore_if_saved(&mut self) {
         let checkpoint_position = self.base().get_global_position();
-        let node = self.to_gd().upcast::<Node>();
-        if let Some(snapshot) = find_saved_checkpoint(
-            &node,
-            self.room_coords,
-            checkpoint_position,
-            POSITION_MATCH_EPSILON,
-        ) {
+        let persistent_entity = self.persistent_entity(checkpoint_position);
+        if let Some(snapshot) = persistent_entity.find_saved_checkpoint(POSITION_MATCH_EPSILON) {
             self.activated = true;
             self.sprite.set_animation("checked");
             self.sprite.play();
@@ -99,5 +97,19 @@ impl Checkpoint {
                 snapshot.position
             );
         }
+    }
+
+    fn persistent_entity(&self, position: Vector2) -> PersistentEntityRef {
+        self.persistent_entity.clone().unwrap_or_else(|| {
+            PersistentEntityRef::new(&self.to_gd().upcast::<Node>(), self.room_coords, position)
+        })
+    }
+
+    fn build_persistent_entity(&self) -> PersistentEntityRef {
+        PersistentEntityRef::new(
+            &self.to_gd().upcast::<Node>(),
+            self.room_coords,
+            self.base().get_global_position(),
+        )
     }
 }

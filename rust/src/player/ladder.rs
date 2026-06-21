@@ -1,7 +1,9 @@
 use godot::{classes::Node2D, prelude::*};
 
+use crate::core::player::MovementInput;
 use crate::entity::ladder::Ladder;
 
+const CLIMB_START_THRESHOLD: f32 = 0.2;
 const LADDER_GROUP: &str = "ladder";
 const PLAYER_HALF_HEIGHT_PX: f32 = 12.0;
 
@@ -42,6 +44,29 @@ pub fn player_overlaps_ladder(
         )
 }
 
+pub(super) fn should_start_climbing(
+    movement_input: MovementInput,
+    touching_ladder: bool,
+    ladder_regrab_blocked: bool,
+    jumped_from_ladder: bool,
+) -> bool {
+    !jumped_from_ladder
+        && !ladder_regrab_blocked
+        && touching_ladder
+        && has_climb_input(movement_input)
+}
+
+pub(super) fn should_clear_regrab_block(
+    movement_input: MovementInput,
+    touching_ladder: bool,
+) -> bool {
+    !touching_ladder || !has_climb_input(movement_input)
+}
+
+fn has_climb_input(movement_input: MovementInput) -> bool {
+    movement_input.vertical_direction.abs() >= CLIMB_START_THRESHOLD
+}
+
 fn ranges_overlap(a_min: f32, a_max: f32, b_min: f32, b_max: f32) -> bool {
     a_min <= b_max && a_max >= b_min
 }
@@ -49,6 +74,13 @@ fn ranges_overlap(a_min: f32, a_max: f32, b_min: f32, b_max: f32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn input_with_vertical(vertical_direction: f32) -> MovementInput {
+        MovementInput {
+            vertical_direction,
+            ..Default::default()
+        }
+    }
 
     #[test]
     fn detects_player_body_overlapping_ladder_bounds() {
@@ -89,5 +121,57 @@ mod tests {
             Vector2::ZERO,
             Vector2::new(16.0, 64.0),
         ));
+    }
+
+    #[test]
+    fn starts_ladder_climbing_with_down_input_when_touching_ladder() {
+        assert!(should_start_climbing(
+            input_with_vertical(1.0),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn starts_ladder_climbing_with_up_input_when_touching_ladder() {
+        assert!(should_start_climbing(
+            input_with_vertical(-1.0),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn ignores_tiny_vertical_input_for_ladder_start() {
+        assert!(!should_start_climbing(
+            input_with_vertical(0.1),
+            true,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn does_not_start_ladder_climbing_while_regrab_is_blocked() {
+        assert!(!should_start_climbing(
+            input_with_vertical(1.0),
+            true,
+            true,
+            false,
+        ));
+    }
+
+    #[test]
+    fn keeps_ladder_regrab_block_while_vertical_input_is_held() {
+        assert!(!should_clear_regrab_block(input_with_vertical(1.0), true));
+        assert!(!should_clear_regrab_block(input_with_vertical(-1.0), true));
+    }
+
+    #[test]
+    fn clears_ladder_regrab_block_after_releasing_vertical_input_or_leaving_ladder() {
+        assert!(should_clear_regrab_block(input_with_vertical(0.0), true));
+        assert!(should_clear_regrab_block(input_with_vertical(1.0), false));
     }
 }

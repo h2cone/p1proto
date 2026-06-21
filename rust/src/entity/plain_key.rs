@@ -3,7 +3,7 @@ use godot::prelude::*;
 
 use crate::core::progress::PersistentEntityKind;
 
-use super::persistence::{PLAIN_KEY_GROUP, has_persistent_entity, mark_persistent_entity};
+use super::persistence::{PLAIN_KEY_GROUP, PersistentEntityRef};
 
 const FOLLOW_OFFSET: Vector2 = Vector2::new(0.0, -20.0);
 
@@ -19,6 +19,7 @@ pub struct PlainKey {
     #[export]
     room_coords: Vector2i,
     original_position: Vector2,
+    persistent_entity: Option<PersistentEntityRef>,
 }
 
 #[godot_api]
@@ -32,6 +33,7 @@ impl IArea2D for PlainKey {
             pending_reparent: false,
             room_coords: Vector2i::ZERO,
             original_position: Vector2::ZERO,
+            persistent_entity: None,
         }
     }
 
@@ -44,16 +46,15 @@ impl IArea2D for PlainKey {
             self.room_coords
         );
 
-        if has_persistent_entity(
-            PersistentEntityKind::Key,
-            &node,
-            self.room_coords,
-            self.original_position,
-        ) {
+        let persistent_entity =
+            PersistentEntityRef::new(&node, self.room_coords, self.original_position);
+
+        if persistent_entity.is_marked(PersistentEntityKind::Key) {
             godot_print!("[PlainKey] already collected, queue_free");
             self.base_mut().queue_free();
             return;
         }
+        self.persistent_entity = Some(persistent_entity);
 
         self.sprite.play();
         self.base_mut().add_to_group(PLAIN_KEY_GROUP);
@@ -104,16 +105,11 @@ impl PlainKey {
 
         let room_coords = self.room_coords;
         let original_position = self.original_position;
-        let node = self.to_gd().upcast::<Node>();
+        let persistent_entity = self.persistent_entity();
         self.signals()
             .key_collected()
             .emit(room_coords, original_position);
-        let _marked = mark_persistent_entity(
-            PersistentEntityKind::Key,
-            &node,
-            room_coords,
-            original_position,
-        );
+        let _marked = persistent_entity.mark(PersistentEntityKind::Key);
 
         self.base_mut()
             .set_deferred("monitoring", &false.to_variant());
@@ -128,5 +124,15 @@ impl PlainKey {
     #[func]
     pub fn is_collected(&self) -> bool {
         self.collected
+    }
+
+    fn persistent_entity(&self) -> PersistentEntityRef {
+        self.persistent_entity.clone().unwrap_or_else(|| {
+            PersistentEntityRef::new(
+                &self.to_gd().upcast::<Node>(),
+                self.room_coords,
+                self.original_position,
+            )
+        })
     }
 }

@@ -7,13 +7,54 @@ use crate::core::world::RoomId;
 
 const LDTK_IID_META: &str = "ldtk_iid";
 
-pub const PLAIN_KEY_GROUP: &str = "plain_keys";
+pub(crate) const PLAIN_KEY_GROUP: &str = "plain_keys";
 
-pub fn room_id(room_coords: Vector2i) -> RoomId {
-    (room_coords.x, room_coords.y)
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct PersistentEntityRef {
+    pub room: RoomId,
+    pub position: Vector2,
+    key: PersistentKey,
 }
 
-pub fn persistent_key(node: &Gd<Node>, room_coords: Vector2i, position: Vector2) -> PersistentKey {
+impl PersistentEntityRef {
+    pub(crate) fn new(node: &Gd<Node>, room_coords: Vector2i, position: Vector2) -> Self {
+        Self {
+            room: room_id(room_coords),
+            position,
+            key: persistent_key(node, room_coords, position),
+        }
+    }
+
+    pub(crate) fn is_marked(&self, kind: PersistentEntityKind) -> bool {
+        progress::has_entity_key(kind, &self.key)
+    }
+
+    pub(crate) fn mark(&self, kind: PersistentEntityKind) -> bool {
+        progress::mark_entity_key(kind, self.key.clone())
+    }
+
+    pub(crate) fn save_checkpoint(&self) -> SaveSnapshot {
+        progress::save_checkpoint_key(
+            DEFAULT_SAVE_SLOT,
+            self.room,
+            self.position,
+            self.key.clone(),
+        )
+    }
+
+    pub(crate) fn find_saved_checkpoint(&self, match_epsilon: f32) -> Option<SaveSnapshot> {
+        let snapshot = progress::peek_checkpoint(DEFAULT_SAVE_SLOT)?;
+        snapshot
+            .matches_checkpoint(self.room, self.position, match_epsilon, Some(&self.key))
+            .then_some(snapshot)
+    }
+}
+
+fn room_id(room_coords: Vector2i) -> RoomId {
+    RoomId::from(room_coords)
+}
+
+fn persistent_key(node: &Gd<Node>, room_coords: Vector2i, position: Vector2) -> PersistentKey {
     if node.has_meta(LDTK_IID_META) {
         let iid = node.get_meta(LDTK_IID_META).to::<GString>().to_string();
         if !iid.is_empty() {
@@ -22,51 +63,4 @@ pub fn persistent_key(node: &Gd<Node>, room_coords: Vector2i, position: Vector2)
     }
 
     progress::make_legacy_key(room_id(room_coords), position)
-}
-
-pub fn has_persistent_entity(
-    kind: PersistentEntityKind,
-    node: &Gd<Node>,
-    room_coords: Vector2i,
-    position: Vector2,
-) -> bool {
-    let key = persistent_key(node, room_coords, position);
-    progress::has_entity_key(kind, &key)
-}
-
-pub fn mark_persistent_entity(
-    kind: PersistentEntityKind,
-    node: &Gd<Node>,
-    room_coords: Vector2i,
-    position: Vector2,
-) -> bool {
-    progress::mark_entity_key(kind, persistent_key(node, room_coords, position))
-}
-
-pub fn save_checkpoint(
-    node: &Gd<Node>,
-    room_coords: Vector2i,
-    checkpoint_position: Vector2,
-) -> SaveSnapshot {
-    let room = room_id(room_coords);
-    let key = persistent_key(node, room_coords, checkpoint_position);
-    progress::save_checkpoint_key(DEFAULT_SAVE_SLOT, room, checkpoint_position, key)
-}
-
-pub fn find_saved_checkpoint(
-    node: &Gd<Node>,
-    room_coords: Vector2i,
-    checkpoint_position: Vector2,
-    match_epsilon: f32,
-) -> Option<SaveSnapshot> {
-    let snapshot = progress::peek_checkpoint(DEFAULT_SAVE_SLOT)?;
-    let key = persistent_key(node, room_coords, checkpoint_position);
-    snapshot
-        .matches_checkpoint(
-            room_id(room_coords),
-            checkpoint_position,
-            match_epsilon,
-            Some(&key),
-        )
-        .then_some(snapshot)
 }

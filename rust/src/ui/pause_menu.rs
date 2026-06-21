@@ -5,6 +5,8 @@ use godot::{
 
 use crate::save;
 
+const MAIN_MENU_SCENE_PATH: &str = "res://ui/main_menu.tscn";
+
 #[derive(GodotClass)]
 #[class(base=Control)]
 pub struct PauseMenu {
@@ -114,6 +116,15 @@ impl PauseMenu {
         // Unpause before changing scene
         let mut tree = self.base().get_tree();
         tree.set_pause(false);
-        let _result = tree.change_scene_to_file("res://ui/main_menu.tscn");
+        if let Err(error) = tree
+            .change_scene_to_file(MAIN_MENU_SCENE_PATH)
+            .into_result()
+        {
+            godot_error!(
+                "Failed to change scene to {}: {:?}",
+                MAIN_MENU_SCENE_PATH,
+                error
+            );
+        }
     }
 }

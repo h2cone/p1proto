@@ -3,7 +3,7 @@ use godot::prelude::*;
 
 use crate::core::progress::PersistentEntityKind;
 
-use super::persistence::{PLAIN_KEY_GROUP, has_persistent_entity, mark_persistent_entity};
+use super::persistence::{PLAIN_KEY_GROUP, PersistentEntityRef};
 use super::plain_key::PlainKey;
 
 #[derive(GodotClass)]
@@ -14,6 +14,7 @@ pub struct PlainLock {
     detect_area: OnReady<Gd<Area2D>>,
     #[export]
     room_coords: Vector2i,
+    persistent_entity: Option<PersistentEntityRef>,
 }
 
 #[godot_api]
@@ -23,6 +24,7 @@ impl IStaticBody2D for PlainLock {
             base,
             detect_area: OnReady::from_node("DetectArea"),
             room_coords: Vector2i::ZERO,
+            persistent_entity: None,
         }
     }
 
@@ -35,11 +37,13 @@ impl IStaticBody2D for PlainLock {
             self.room_coords
         );
 
-        if has_persistent_entity(PersistentEntityKind::Lock, &node, self.room_coords, pos) {
+        let persistent_entity = PersistentEntityRef::new(&node, self.room_coords, pos);
+        if persistent_entity.is_marked(PersistentEntityKind::Lock) {
             godot_print!("[PlainLock] already unlocked, queue_free");
             self.base_mut().queue_free();
             return;
         }
+        self.persistent_entity = Some(persistent_entity);
 
         let plain_lock = self.to_gd();
         self.detect_area
@@ -66,10 +70,10 @@ impl PlainLock {
         let keys = tree.get_nodes_in_group(PLAIN_KEY_GROUP);
 
         for node in keys.iter_shared() {
-            if let Ok(key) = node.try_cast::<PlainKey>() {
-                if key.bind().is_collected() {
-                    return Some(key);
-                }
+            if let Ok(key) = node.try_cast::<PlainKey>()
+                && key.bind().is_collected()
+            {
+                return Some(key);
             }
         }
         None
@@ -78,11 +82,17 @@ impl PlainLock {
     fn unlock(&mut self, key: &mut Gd<PlainKey>) {
         let room_coords = self.room_coords;
         let pos = self.base().get_global_position();
-        let node = self.to_gd().upcast::<Node>();
+        let persistent_entity = self.persistent_entity(pos);
 
         self.signals().lock_unlocked().emit(room_coords, pos);
-        let _marked = mark_persistent_entity(PersistentEntityKind::Lock, &node, room_coords, pos);
+        let _marked = persistent_entity.mark(PersistentEntityKind::Lock);
         key.bind_mut().consume();
         self.base_mut().queue_free();
+    }
+
+    fn persistent_entity(&self, position: Vector2) -> PersistentEntityRef {
+        self.persistent_entity.clone().unwrap_or_else(|| {
+            PersistentEntityRef::new(&self.to_gd().upcast::<Node>(), self.room_coords, position)
+        })
     }
 }
