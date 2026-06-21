@@ -1,5 +1,5 @@
 use godot::{
-    classes::{Node2D, PackedScene},
+    classes::{Node2D, PackedScene, ResourceLoader},
     prelude::*,
 };
 use std::{collections::HashMap, fmt};
@@ -108,6 +108,15 @@ impl RoomLoader {
         }
 
         let path = self.scene_path(room_coords);
+        // Probe existence silently. The boundary checker calls this every
+        // physics frame against adjacent rooms, many of which don't exist.
+        // Using try_load here would log a load error for every missing room;
+        // ResourceLoader::exists returns false without touching the error log.
+        let mut loader = ResourceLoader::singleton();
+        if !loader.exists(&path) {
+            return false;
+        }
+
         match try_load::<PackedScene>(&path) {
             Ok(scene) => {
                 self.scene_cache.insert(room_coords, scene);
