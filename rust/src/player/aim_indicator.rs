@@ -2,18 +2,13 @@ use godot::prelude::*;
 
 const INPUT_DEADZONE: f32 = 0.01;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum AimDirection {
     Up,
     Down,
     Left,
+    #[default]
     Right,
-}
-
-impl Default for AimDirection {
-    fn default() -> Self {
-        Self::Right
-    }
 }
 
 impl AimDirection {

@@ -313,12 +313,17 @@ pub fn reset_all() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::world::RoomId;
+
+    fn room(x: i32, y: i32) -> RoomId {
+        RoomId::new(x, y)
+    }
 
     #[test]
     fn checkpoint_roundtrip_and_pending_load() {
         reset_all();
 
-        let room = (1, 2);
+        let room = room(1, 2);
         let position = Vector2::new(10.0, 20.0);
         let saved = save_checkpoint(DEFAULT_SAVE_SLOT, room, position);
 
@@ -337,7 +342,7 @@ mod tests {
     fn tracks_persistent_entities_and_stars() {
         reset_all();
 
-        let room = (3, 4);
+        let room = room(3, 4);
         let key_pos = Vector2::new(5.0, 6.0);
         let star_key = PersistentKey::Explicit("star:room_3_4".to_string());
 
@@ -358,19 +363,19 @@ mod tests {
         let checkpoint_key = PersistentKey::Explicit("checkpoint:alpha".to_string());
         let snapshot = save_checkpoint_key(
             DEFAULT_SAVE_SLOT,
-            (0, 1),
+            room(0, 1),
             Vector2::new(16.0, 24.0),
             checkpoint_key.clone(),
         );
 
         assert!(snapshot.matches_checkpoint(
-            (0, 1),
+            room(0, 1),
             Vector2::new(32.0, 48.0),
             0.1,
             Some(&checkpoint_key),
         ));
         assert!(!snapshot.matches_checkpoint(
-            (0, 1),
+            room(0, 1),
             Vector2::new(16.0, 24.0),
             0.1,
             Some(&PersistentKey::Explicit("checkpoint:beta".to_string())),
@@ -381,13 +386,13 @@ mod tests {
     fn tracks_explored_rooms_and_reset() {
         reset_all();
 
-        assert!(mark_room_explored((2, 3)));
-        assert!(is_room_explored((2, 3)));
-        assert_eq!(list_explored_rooms(), vec![(2, 3)]);
+        assert!(mark_room_explored(room(2, 3)));
+        assert!(is_room_explored(room(2, 3)));
+        assert_eq!(list_explored_rooms(), vec![room(2, 3)]);
 
         reset_all();
 
         assert!(!has_save(DEFAULT_SAVE_SLOT));
-        assert!(!is_room_explored((2, 3)));
+        assert!(!is_room_explored(room(2, 3)));
     }
 }

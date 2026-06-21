@@ -29,7 +29,6 @@ const HAZARD_LAYER: i32 = 12;
 const DROP_THROUGH_DURATION: f64 = 0.35;
 const PUSH_SPEED: f32 = 80.0;
 const DEATH_ANIMATION: &str = "death";
-const CLIMB_START_THRESHOLD: f32 = 0.2;
 const HAZARD_TILEMAP_PREFIXES: [&str; 2] = ["HazardsTiles", "Hazards"];
 const WATER_BODY_OVERLAY_PATH: &str = "WaterBodyOverlay";
 const WATER_SURFACE_OVERLAY_PATH: &str = "WaterSurfaceOverlay";
@@ -230,7 +229,7 @@ impl ICharacterBody2D for Player {
             }
         }
 
-        if should_start_climbing(
+        if ladder::should_start_climbing(
             movement_input,
             touching_ladder,
             self.ladder_regrab_blocked,
@@ -284,10 +283,10 @@ impl ICharacterBody2D for Player {
             self.last_water_zone = None;
         }
 
-        if let water::WaterContact::Surface { surface_y } = water_contact {
-            if water::should_snap_to_surface_float(movement_input) {
-                self.snap_to_water_surface_float(&mut body, surface_y, water_tuning);
-            }
+        if let water::WaterContact::Surface { surface_y } = water_contact
+            && water::should_snap_to_surface_float(movement_input)
+        {
+            self.snap_to_water_surface_float(&mut body, surface_y, water_tuning);
         }
 
         let movement_velocity = water::velocity_for_surface(velocity, water_contact);
@@ -370,26 +369,6 @@ fn project_gravity() -> f32 {
     settings.get("physics/2d/default_gravity").to::<f64>() as f32
 }
 
-fn should_start_climbing(
-    movement_input: MovementInput,
-    touching_ladder: bool,
-    ladder_regrab_blocked: bool,
-    jumped_from_ladder: bool,
-) -> bool {
-    !jumped_from_ladder
-        && !ladder_regrab_blocked
-        && touching_ladder
-        && has_climb_input(movement_input)
-}
-
-fn should_clear_ladder_regrab_block(movement_input: MovementInput, touching_ladder: bool) -> bool {
-    !touching_ladder || !has_climb_input(movement_input)
-}
-
-fn has_climb_input(movement_input: MovementInput) -> bool {
-    movement_input.vertical_direction.abs() >= CLIMB_START_THRESHOLD
-}
-
 fn set_polygon_rect(polygon: &mut Gd<Polygon2D>, left: f32, right: f32, top: f32, bottom: f32) {
     polygon.set_polygon(&PackedVector2Array::from_iter([
         Vector2::new(left, top),
@@ -410,7 +389,7 @@ impl Player {
             return;
         }
 
-        if self.sprite.get_animation() == StringName::from(DEATH_ANIMATION) {
+        if self.sprite.get_animation() == DEATH_ANIMATION {
             self.is_dying = false;
             self.signals().death_finished().emit();
         }
@@ -545,7 +524,7 @@ impl Player {
             return;
         }
 
-        if should_clear_ladder_regrab_block(movement_input, touching_ladder) {
+        if ladder::should_clear_regrab_block(movement_input, touching_ladder) {
             self.ladder_regrab_blocked = false;
         }
     }
@@ -651,77 +630,6 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn input_with_vertical(vertical_direction: f32) -> MovementInput {
-        MovementInput {
-            vertical_direction,
-            ..Default::default()
-        }
-    }
-
-    #[test]
-    fn starts_ladder_climbing_with_down_input_when_touching_ladder() {
-        assert!(should_start_climbing(
-            input_with_vertical(1.0),
-            true,
-            false,
-            false,
-        ));
-    }
-
-    #[test]
-    fn starts_ladder_climbing_with_up_input_when_touching_ladder() {
-        assert!(should_start_climbing(
-            input_with_vertical(-1.0),
-            true,
-            false,
-            false,
-        ));
-    }
-
-    #[test]
-    fn ignores_tiny_vertical_input_for_ladder_start() {
-        assert!(!should_start_climbing(
-            input_with_vertical(0.1),
-            true,
-            false,
-            false,
-        ));
-    }
-
-    #[test]
-    fn does_not_start_ladder_climbing_while_regrab_is_blocked() {
-        assert!(!should_start_climbing(
-            input_with_vertical(1.0),
-            true,
-            true,
-            false,
-        ));
-    }
-
-    #[test]
-    fn keeps_ladder_regrab_block_while_vertical_input_is_held() {
-        assert!(!should_clear_ladder_regrab_block(
-            input_with_vertical(1.0),
-            true,
-        ));
-        assert!(!should_clear_ladder_regrab_block(
-            input_with_vertical(-1.0),
-            true,
-        ));
-    }
-
-    #[test]
-    fn clears_ladder_regrab_block_after_releasing_vertical_input_or_leaving_ladder() {
-        assert!(should_clear_ladder_regrab_block(
-            input_with_vertical(0.0),
-            true,
-        ));
-        assert!(should_clear_ladder_regrab_block(
-            input_with_vertical(1.0),
-            false,
-        ));
-    }
 
     #[test]
     fn exported_water_tuning_values_feed_runtime_tuning() {

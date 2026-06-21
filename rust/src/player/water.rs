@@ -36,10 +36,13 @@ impl WaterBounds {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum WaterContact {
+    #[default]
     None,
-    Surface { surface_y: f32 },
+    Surface {
+        surface_y: f32,
+    },
     Submerged,
 }
 
@@ -195,12 +198,6 @@ impl WaterState {
 
         self.update(contact);
         events
-    }
-}
-
-impl Default for WaterContact {
-    fn default() -> Self {
-        Self::None
     }
 }
 

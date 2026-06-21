@@ -5,6 +5,8 @@ use godot::{
 
 use crate::save::{self, DEFAULT_SAVE_SLOT};
 
+const GAME_SCENE_PATH: &str = "res://game.tscn";
+
 #[derive(GodotClass)]
 #[class(base=Control)]
 pub struct MainMenu {
@@ -74,7 +76,9 @@ impl MainMenu {
 
         // Load and switch to game scene
         let mut tree = self.base().get_tree();
-        let _result = tree.change_scene_to_file("res://game.tscn");
+        if let Err(error) = tree.change_scene_to_file(GAME_SCENE_PATH).into_result() {
+            godot_error!("Failed to change scene to {}: {:?}", GAME_SCENE_PATH, error);
+        }
     }
 
     /// Handle continue button press - queue load and switch to game scene
@@ -86,7 +90,9 @@ impl MainMenu {
                 DEFAULT_SAVE_SLOT
             );
             let mut tree = self.base().get_tree();
-            let _result = tree.change_scene_to_file("res://game.tscn");
+            if let Err(error) = tree.change_scene_to_file(GAME_SCENE_PATH).into_result() {
+                godot_error!("Failed to change scene to {}: {:?}", GAME_SCENE_PATH, error);
+            }
         } else {
             godot_warn!("Continue requested but no save data available");
         }

@@ -3,7 +3,7 @@ use godot::prelude::*;
 
 use crate::core::world::RoomId;
 use crate::player::Player;
-use crate::rooms::RoomLoader;
+use crate::rooms::{RoomLoadError, RoomLoader};
 
 use super::player_spawner::PlayerSpawner;
 use super::room_manager::GameRoomManager;
@@ -35,10 +35,10 @@ impl RoomRuntime {
         &mut self,
         owner: &mut Gd<Node2D>,
         room: RoomId,
-    ) -> Option<Gd<Node2D>> {
+    ) -> Result<Gd<Node2D>, RoomLoadError> {
         let room_node = self.loader.instantiate_room(room)?;
         owner.add_child(&room_node);
-        Some(room_node)
+        Ok(room_node)
     }
 
     pub(crate) fn set_current_room(&mut self, room: Gd<Node2D>) {
@@ -74,9 +74,12 @@ impl PlayerRuntime {
         spawn_pos: Vector2,
         room_manager: &Gd<GameRoomManager>,
     ) -> bool {
-        let Some(mut player) = self.spawner.spawn() else {
-            godot_error!("Failed to load player scene for spawn at {:?}", spawn_pos);
-            return false;
+        let mut player = match self.spawner.spawn() {
+            Ok(player) => player,
+            Err(error) => {
+                godot_error!("Failed to spawn player at {:?}: {}", spawn_pos, error);
+                return false;
+            }
         };
 
         player.set_global_position(spawn_pos);

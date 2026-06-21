@@ -3,6 +3,7 @@ use godot::prelude::*;
 use crate::core::progress;
 #[cfg(test)]
 use crate::core::progress::PersistentEntityKind;
+use crate::core::world::RoomId;
 
 pub use crate::core::progress::{
     DEFAULT_SAVE_SLOT, clear_pending_load, get_star_count, has_save, is_room_explored,
@@ -10,22 +11,22 @@ pub use crate::core::progress::{
 };
 
 #[cfg(test)]
-pub fn mark_lock_unlocked(room: (i32, i32), position: Vector2) {
+pub fn mark_lock_unlocked(room: RoomId, position: Vector2) {
     let _marked = progress::mark_entity(PersistentEntityKind::Lock, room, position);
 }
 
 #[cfg(test)]
-pub fn is_lock_unlocked(room: (i32, i32), position: Vector2) -> bool {
+pub fn is_lock_unlocked(room: RoomId, position: Vector2) -> bool {
     progress::has_entity(PersistentEntityKind::Lock, room, position)
 }
 
 #[cfg(test)]
-pub fn mark_key_collected(room: (i32, i32), position: Vector2) {
+pub fn mark_key_collected(room: RoomId, position: Vector2) {
     let _marked = progress::mark_entity(PersistentEntityKind::Key, room, position);
 }
 
 #[cfg(test)]
-pub fn is_key_collected(room: (i32, i32), position: Vector2) -> bool {
+pub fn is_key_collected(room: RoomId, position: Vector2) -> bool {
     progress::has_entity(PersistentEntityKind::Key, room, position)
 }
 
@@ -67,15 +68,15 @@ impl SaveApi {
     #[func]
     pub fn get_explored_rooms(&self) -> Array<Vector2i> {
         let mut rooms = Array::new();
-        for (x, y) in list_explored_rooms() {
-            rooms.push(Vector2i::new(x, y));
+        for room in list_explored_rooms() {
+            rooms.push(Vector2i::from(room));
         }
         rooms
     }
 
     #[func]
     pub fn is_room_explored(&self, room: Vector2i) -> bool {
-        crate::save::is_room_explored((room.x, room.y))
+        crate::save::is_room_explored(RoomId::from(room))
     }
 }
 
@@ -83,24 +84,28 @@ impl SaveApi {
 mod tests {
     use super::*;
 
+    fn room(x: i32, y: i32) -> RoomId {
+        RoomId::new(x, y)
+    }
+
     #[test]
     fn reset_all_clears_everything() {
-        progress::save_checkpoint(DEFAULT_SAVE_SLOT, (1, 2), Vector2::new(10.0, 20.0));
+        progress::save_checkpoint(DEFAULT_SAVE_SLOT, room(1, 2), Vector2::new(10.0, 20.0));
         assert!(progress::has_save(DEFAULT_SAVE_SLOT));
 
-        mark_key_collected((1, 2), Vector2::new(30.0, 40.0));
-        mark_lock_unlocked((1, 2), Vector2::new(50.0, 60.0));
-        assert!(is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
-        assert!(is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
+        mark_key_collected(room(1, 2), Vector2::new(30.0, 40.0));
+        mark_lock_unlocked(room(1, 2), Vector2::new(50.0, 60.0));
+        assert!(is_key_collected(room(1, 2), Vector2::new(30.0, 40.0)));
+        assert!(is_lock_unlocked(room(1, 2), Vector2::new(50.0, 60.0)));
 
-        mark_room_explored((2, 3));
-        assert!(is_room_explored((2, 3)));
+        mark_room_explored(room(2, 3));
+        assert!(is_room_explored(room(2, 3)));
 
         reset_all();
 
         assert!(!progress::has_save(DEFAULT_SAVE_SLOT));
-        assert!(!is_key_collected((1, 2), Vector2::new(30.0, 40.0)));
-        assert!(!is_lock_unlocked((1, 2), Vector2::new(50.0, 60.0)));
-        assert!(!is_room_explored((2, 3)));
+        assert!(!is_key_collected(room(1, 2), Vector2::new(30.0, 40.0)));
+        assert!(!is_lock_unlocked(room(1, 2), Vector2::new(50.0, 60.0)));
+        assert!(!is_room_explored(room(2, 3)));
     }
 }

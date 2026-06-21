@@ -1,3 +1,4 @@
 mod loader;
 
-pub use loader::RoomLoader;
+pub(crate) use loader::RoomLoadError;
+pub(crate) use loader::RoomLoader;

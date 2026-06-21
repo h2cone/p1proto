@@ -1,5 +1,7 @@
 use godot::{classes::CharacterBody2D, prelude::*};
 
+use crate::core::world::{PLAYER_WIDTH, ROOM_WIDTH};
+
 const MAX_CORRECTION_PX: i32 = 3;
 const SIDE_NORMAL_THRESHOLD: f32 = 0.7;
 const INTENT_EPSILON: f32 = 0.01;
@@ -73,6 +75,11 @@ fn can_apply_offset(
     transform: Transform2D,
     offset: Vector2,
 ) -> bool {
+    let destination = transform.origin + offset;
+    if !within_room_horizontal_bounds(destination.x) {
+        return false;
+    }
+
     let lateral_blocked = motion_collides(body, transform, offset);
     if lateral_blocked {
         return false;
@@ -85,11 +92,23 @@ fn can_apply_offset(
     correction_candidate_is_corner(false, upward_blocked, shifted_upward_blocked)
 }
 
+/// Corner correction must keep the player inside the current room. The
+/// boundary passages are open holes in the walls, so a "clear" lateral probe
+/// next to one can report a valid-looking corner whose gap is actually the
+/// room exterior (no floor below). Nudging the player through such a gap
+/// drops them into unloaded space, so reject offsets that leave the room's
+/// horizontal interior.
+fn within_room_horizontal_bounds(x: f32) -> bool {
+    let half_width = PLAYER_WIDTH * 0.5;
+    x >= half_width && x <= ROOM_WIDTH - half_width
+}
+
 fn motion_collides(
     body: &mut Gd<CharacterBody2D>,
     transform: Transform2D,
     motion: Vector2,
 ) -> bool {
+    // gdext does not expose CharacterBody2D::test_move as a static Rust method.
     body.call("test_move", &[transform.to_variant(), motion.to_variant()])
         .to::<bool>()
 }
@@ -107,10 +126,10 @@ fn correction_directions(horizontal_intent: f32, side_normal_x: Option<f32>) -> 
         return ordered_pair(horizontal_intent.signum());
     }
 
-    if let Some(normal_x) = side_normal_x {
-        if normal_x.abs() > INTENT_EPSILON {
-            return ordered_pair(-normal_x.signum());
-        }
+    if let Some(normal_x) = side_normal_x
+        && normal_x.abs() > INTENT_EPSILON
+    {
+        return ordered_pair(-normal_x.signum());
     }
 
     [-1.0, 1.0]
@@ -163,5 +182,23 @@ mod tests {
     #[test]
     fn candidate_rejects_blocked_lateral_offset() {
         assert!(!correction_candidate_is_corner(true, true, false));
+    }
+
+    #[test]
+    fn bounds_accept_interior_position() {
+        assert!(within_room_horizontal_bounds(ROOM_WIDTH * 0.5));
+        assert!(within_room_horizontal_bounds(PLAYER_WIDTH * 0.5));
+        assert!(within_room_horizontal_bounds(
+            ROOM_WIDTH - PLAYER_WIDTH * 0.5
+        ));
+    }
+
+    #[test]
+    fn bounds_reject_positions_past_room_edge() {
+        // Poking through a boundary passage (e.g. wedged at Room_0_1's right
+        // edge in front of the PlainLock) leaves the player past the floor,
+        // so corner correction must not nudge them further out.
+        assert!(!within_room_horizontal_bounds(ROOM_WIDTH + 1.0));
+        assert!(!within_room_horizontal_bounds(-1.0));
     }
 }
