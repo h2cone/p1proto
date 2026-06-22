@@ -30,9 +30,11 @@ cargo xtask export               # create export output
 | Key | Action |
 |-----|--------|
 | Left / Right | Move |
+| Up / Down | Climb ladders; Up activates portals; Down drops through one-way platforms |
 | Space | Jump |
-| Up | Activate portals |
+| R | Respawn at checkpoint |
 | M | Toggle world map |
+| Shift | Show room grid while held |
 | Esc | Pause |
 | B | Toggle background music |
 
