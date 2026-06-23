@@ -12,6 +12,7 @@ pub enum Command {
     Run(RunArgs),
     Export(ExportArgs),
     UpdateGdext(UpdateGdextArgs),
+    UpdateGodotAddons(UpdateGodotAddonsArgs),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
@@ -26,6 +27,13 @@ pub enum BuildMode {
 pub enum ExportTarget {
     Windows,
     Macos,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum GodotAddonSelection {
+    All,
+    Ldtk,
+    Aseprite,
 }
 
 #[derive(Debug, Args)]
@@ -68,6 +76,16 @@ pub struct UpdateGdextArgs {
     pub skip_lockfile: bool,
 }
 
+#[derive(Debug, Args)]
+pub struct UpdateGodotAddonsArgs {
+    #[arg(long, value_enum, default_value_t = GodotAddonSelection::All)]
+    pub addon: GodotAddonSelection,
+    #[arg(long = "ref")]
+    pub ref_name: Option<String>,
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,5 +109,28 @@ mod tests {
         let error = Cli::try_parse_from(["xtask", "resize-ldtk-rooms"]).unwrap_err();
 
         assert_eq!(error.kind(), clap::error::ErrorKind::InvalidSubcommand);
+    }
+
+    #[test]
+    fn parses_update_godot_addons_single_ref() {
+        let cli = Cli::try_parse_from([
+            "xtask",
+            "update-godot-addons",
+            "--addon",
+            "aseprite",
+            "--ref",
+            "v9.8.0",
+            "--dry-run",
+        ])
+        .unwrap();
+
+        assert!(matches!(
+            cli.command,
+            Command::UpdateGodotAddons(UpdateGodotAddonsArgs {
+                addon: GodotAddonSelection::Aseprite,
+                ref_name: Some(_),
+                dry_run: true,
+            })
+        ));
     }
 }

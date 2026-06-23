@@ -5,6 +5,7 @@ mod paths;
 mod process;
 mod run;
 mod update_gdext;
+mod update_godot_addons;
 
 use anyhow::Result;
 use clap::Parser;
@@ -18,5 +19,6 @@ fn main() -> Result<()> {
         Command::Run(args) => run::execute(&paths, args),
         Command::Export(args) => export::execute(&paths, args),
         Command::UpdateGdext(args) => update_gdext::execute(&paths, args),
+        Command::UpdateGodotAddons(args) => update_godot_addons::execute(&paths, args),
     }
 }
