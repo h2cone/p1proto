@@ -8,7 +8,7 @@
 [node name="Game" type="Game" unique_id=1144876511]
 
 [node name="RoomManager" type="GameRoomManager" parent="." unique_id=158921282]
-initial_room = Vector2i(1, 2)
+initial_room = Vector2i(3, 1)
 
 [node name="RoomGridOverlay" type="RoomGridOverlay" parent="." unique_id=1905820459]
 anchors_preset = 15
